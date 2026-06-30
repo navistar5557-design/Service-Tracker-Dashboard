@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="crm-worklog-endpoint" content="">
   <title>Service Tracker Dashboard</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
@@ -114,7 +115,8 @@
       min-height: 114px;
       padding: 16px;
       display: grid;
-      align-content: space-between;
+      grid-template-rows: 40px 44px minmax(38px, auto);
+      align-content: stretch;
       gap: 8px;
       cursor: pointer;
       text-align: left;
@@ -163,6 +165,9 @@
     }
 
     .metric-value {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
       font-size: clamp(26px, 4vw, 38px);
       font-weight: 780;
       letter-spacing: 0;
@@ -170,6 +175,7 @@
     }
 
     .metric-note {
+      min-height: 38px;
       color: var(--muted);
       font-size: 13px;
     }
@@ -180,6 +186,10 @@
 
     .metric-card.warning .metric-value {
       color: var(--amber);
+    }
+
+    .metric-card.success .metric-value {
+      color: var(--green);
     }
 
     .toolbar {
@@ -585,6 +595,11 @@
       background: #f7fafb;
     }
 
+    .worklog-mode-bar[hidden],
+    .worklog-actions[hidden] {
+      display: none;
+    }
+
     .worklog-mode-tabs {
       display: inline-flex;
       gap: 4px;
@@ -791,6 +806,45 @@
       color: var(--muted);
       font-size: 13px;
       font-weight: 700;
+    }
+
+    .crm-sync-bar {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.7fr) minmax(210px, 0.9fr) auto minmax(220px, 1.4fr);
+      gap: 12px;
+      align-items: end;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7fafb;
+    }
+
+    .crm-sync-status {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .crm-feed-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .crm-source-chip {
+      display: inline-flex;
+      margin-top: 8px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #075e54;
+      background: #dff5f1;
+      font-size: 11px;
+      font-weight: 800;
     }
 
     .worklog-list {
@@ -1456,6 +1510,7 @@
       .map-layout,
       .worklog-grid,
       .worklog-grid.detailed,
+      .crm-sync-bar,
       .history-controls,
       .completed-filters,
       .chart-grid {
@@ -1564,7 +1619,7 @@
           <div class="metric-value" id="pendingCount">0</div>
           <div class="metric-note">Awaiting closure</div>
         </article>
-        <article class="metric-card warning" data-summary-filter="completed" role="button" tabindex="0" aria-pressed="false">
+        <article class="metric-card success" data-summary-filter="completed" role="button" tabindex="0" aria-pressed="false">
           <div class="metric-label">Completed Requests</div>
           <div class="metric-value" id="completedRequestsCount">0</div>
           <div class="metric-note">Completed work requests</div>
@@ -1667,7 +1722,7 @@
         <div class="panel-head">
           <div>
             <h2>Service Engineer Work Status Map</h2>
-            <p class="panel-subtitle">Daily work allocation and availability based on saved Work Log entries</p>
+            <p class="panel-subtitle">Daily work allocation and availability based on CRM service tasks</p>
           </div>
           <button class="secondary-button" id="toggleEngineerStatusBreakup" type="button" aria-expanded="false" aria-controls="engineerStatusBreakup">
             Expand engineer data
@@ -1690,21 +1745,39 @@
         </div>
       </section>
 
-      <section class="panel worklog-panel">
+      <section class="panel worklog-panel" hidden>
         <div class="panel-head">
           <div>
-            <h2>Daily Work Log</h2>
-            <p class="panel-subtitle">Hybrid entry for quick team updates and detailed site reporting</p>
+            <h2>CRM Daily Service Tasks</h2>
+            <p class="panel-subtitle">Read-only worklogs synchronized from CRM; manual entry is disabled</p>
           </div>
         </div>
-        <div class="worklog-mode-bar">
+        <div class="crm-sync-bar">
+          <div class="field">
+            <label for="worklogDate">Task Date</label>
+            <input id="worklogDate" type="date">
+          </div>
+          <div class="field">
+            <label for="worklogEngineerFilter">Service Engineer</label>
+            <select id="worklogEngineerFilter">
+              <option value="All">All engineers</option>
+            </select>
+          </div>
+          <button class="primary-button" id="syncCrmWorklogs" type="button">Sync CRM Tasks</button>
+          <div class="crm-sync-status" id="crmSyncStatus" role="status">Waiting for CRM synchronization.</div>
+        </div>
+        <div class="crm-feed-head">
+          <strong>Daily service task worklogs</strong>
+          <span class="panel-subtitle" id="crmTaskCount">0 tasks</span>
+        </div>
+        <div class="worklog-mode-bar" hidden>
           <div class="worklog-mode-tabs" role="tablist" aria-label="Work log entry mode">
             <button class="worklog-mode-button active" id="quickModeButton" data-worklog-mode="quick" type="button" role="tab" aria-selected="true">Quick Update</button>
             <button class="worklog-mode-button" id="detailedModeButton" data-worklog-mode="detailed" type="button" role="tab" aria-selected="false">Detailed Entry</button>
           </div>
           <span class="worklog-mode-copy" id="worklogModeCopy">Update several service requests with one common activity</span>
         </div>
-        <div class="worklog-pane" id="quickWorklogPane">
+        <div class="worklog-pane" id="quickWorklogPane" hidden>
           <div class="worklog-grid">
             <div class="field">
               <label for="worklogServices">Service Requests</label>
@@ -1712,16 +1785,6 @@
                 <summary id="worklogSummary">Select services</summary>
                 <div class="multi-select-options" id="worklogServiceOptions"></div>
               </details>
-            </div>
-            <div class="field">
-              <label for="worklogDate">Log Date</label>
-              <input id="worklogDate" type="date">
-            </div>
-            <div class="field">
-              <label for="worklogEngineerFilter">Map Engineer Filter</label>
-              <select id="worklogEngineerFilter">
-                <option value="All">All engineers</option>
-              </select>
             </div>
             <div class="field">
               <label for="worklogStatus">Work Status</label>
@@ -1819,7 +1882,7 @@
             </div>
           </div>
         </div>
-        <div class="worklog-actions">
+        <div class="worklog-actions" hidden>
           <button class="primary-button" id="saveWorklog" type="button">Save Work Log</button>
           <button class="secondary-button" id="clearWorklog" type="button">Clear</button>
           <span class="worklog-message" id="worklogMessage"></span>
@@ -2165,6 +2228,9 @@
     let engineerStatusLayer;
     let mapReady = false;
     let engineerMapReady = false;
+    const CRM_WORKLOG_ENDPOINT = window.SERVICE_TRACKER_CRM_ENDPOINT
+      || document.querySelector('meta[name="crm-worklog-endpoint"]')?.content
+      || "";
     let workLogs = loadWorkLogs();
     let activeSummaryFilter = "all";
     let savedServiceRequests = loadServiceRequests();
@@ -2242,14 +2308,84 @@
 
     function loadWorkLogs() {
       try {
-        return JSON.parse(localStorage.getItem("serviceTrackerWorkLogs") || "[]");
+        return JSON.parse(localStorage.getItem("serviceTrackerCrmWorkLogs") || "[]");
       } catch {
         return [];
       }
     }
 
     function saveWorkLogs() {
-      localStorage.setItem("serviceTrackerWorkLogs", JSON.stringify(workLogs));
+      localStorage.setItem("serviceTrackerCrmWorkLogs", JSON.stringify(workLogs));
+    }
+
+    function normalizeCrmWorklog(task) {
+      const requestedId = Number(task.serviceId || task.serviceRequestId || task.service_request_id || task.requestId);
+      const matchedService = enrichedRequests.find((item) => item.id === requestedId || item.site === task.site || item.site === task.siteCode);
+      if (!matchedService) return null;
+
+      const date = task.date || task.taskDate || task.task_date || task.serviceDate;
+      if (!date) return null;
+
+      const checkIn = task.checkIn || task.check_in || "-";
+      const checkOut = task.checkOut || task.check_out || "-";
+      return {
+        id: String(task.id || task.taskId || task.task_id || `CRM-${matchedService.id}-${date}`),
+        crmTaskId: String(task.taskId || task.task_id || task.id || "-"),
+        serviceId: matchedService.id,
+        date,
+        engineer: task.engineer || task.serviceEngineer || task.engineer_name || "",
+        status: task.status || task.workStatus || task.work_status || "In progress",
+        workMode: task.workMode || task.work_mode || "Site Work",
+        note: task.note || task.activity || task.workPerformed || task.description || "CRM daily service task",
+        checkIn,
+        checkOut,
+        hours: task.hours || task.totalWorkingHours || calculateWorkingHours(checkIn, checkOut),
+        newInstallation: Number(task.newInstallation || task.new_installation || 0),
+        service: Number(task.serviceCount || task.service_count || 0),
+        pending: task.pending || task.pendingWork || "-",
+        remarks: task.remarks || task.notes || "-",
+        attachments: task.attachments || "-",
+        progress: String(task.progress ?? task.progressPercentage ?? "-").replace(/^(\d+)$/, "$1%"),
+        source: "CRM",
+        createdAt: task.updatedAt || task.updated_at || task.createdAt || `${date}T00:00:00`
+      };
+    }
+
+    async function syncCrmWorklogs() {
+      const status = byId("crmSyncStatus");
+      const selectedDate = byId("worklogDate").value || todayValue();
+
+      if (!CRM_WORKLOG_ENDPOINT) {
+        status.textContent = "CRM endpoint is not configured. Add the CRM daily-service-task API to enable synchronization.";
+        render();
+        return;
+      }
+
+      status.textContent = "Synchronizing daily service tasks from CRM...";
+      byId("syncCrmWorklogs").disabled = true;
+
+      try {
+        const requestUrl = new URL(CRM_WORKLOG_ENDPOINT, window.location.href);
+        requestUrl.searchParams.set("date", selectedDate);
+        const response = await fetch(requestUrl, {
+          method: "GET",
+          credentials: "include",
+          headers: { Accept: "application/json" }
+        });
+        if (!response.ok) throw new Error(`CRM returned ${response.status}`);
+
+        const payload = await response.json();
+        const tasks = Array.isArray(payload) ? payload : (payload.tasks || payload.data || []);
+        const syncedLogs = tasks.map(normalizeCrmWorklog).filter(Boolean);
+        workLogs = [...workLogs.filter((log) => log.date !== selectedDate), ...syncedLogs];
+        saveWorkLogs();
+        status.textContent = `CRM synchronized ${syncedLogs.length} task${syncedLogs.length === 1 ? "" : "s"} for ${displayDate(selectedDate)}.`;
+        render();
+      } catch (error) {
+        status.textContent = `CRM synchronization failed: ${error.message}.`;
+      } finally {
+        byId("syncCrmWorklogs").disabled = false;
+      }
     }
 
     function loadServiceRequests() {
@@ -2355,8 +2491,6 @@
       refreshSelect("engineerFilter", engineerNames(), "All engineers");
       byId("worklogEngineerFilter").innerHTML = `<option value="All">All engineers</option>`;
       populateWorklogEngineerFilter();
-      populateWorklogServices();
-      populateDetailedServices();
     }
 
     function daysBetween(startDate, endDate) {
@@ -2755,10 +2889,15 @@
     }
 
     function renderRecentWorklogs() {
+      const selectedDate = byId("worklogDate").value || todayValue();
+      const selectedEngineer = byId("worklogEngineerFilter").value;
       const recent = workLogs
+        .filter((log) => log.date === selectedDate && (selectedEngineer === "All" || log.engineer === selectedEngineer))
         .slice()
         .sort((a, b) => `${b.date} ${b.createdAt}`.localeCompare(`${a.date} ${a.createdAt}`))
-        .slice(0, 6);
+        .slice(0, 12);
+
+      byId("crmTaskCount").textContent = `${recent.length} task${recent.length === 1 ? "" : "s"}`;
 
       byId("recentWorklogs").innerHTML = recent.length ? recent.map((log) => {
         const service = enrichedRequests.find((item) => item.id === log.serviceId);
@@ -2769,9 +2908,10 @@
             <span>${escapeHtml(displayDate(log.date))} - ${escapeHtml(log.status)}${log.engineer ? ` - ${escapeHtml(log.engineer)}` : ""}</span>
             <span>${escapeHtml(log.note)}</span>
             ${log.workMode || log.progress ? `<span>${escapeHtml(log.workMode || "")}${log.workMode && log.progress ? " - " : ""}${escapeHtml(log.progress || "")}</span>` : ""}
+            <span class="crm-source-chip">CRM Task ${escapeHtml(log.crmTaskId || log.id)}</span>
           </div>
         `;
-      }).join("") : `<div class="empty-state visible">No work logs saved yet.</div>`;
+      }).join("") : `<div class="empty-state visible">No CRM daily service tasks found for the selected date and engineer.</div>`;
     }
 
     function completedBreakupRows(record) {
@@ -3786,16 +3926,13 @@
 
     refreshDynamicControls();
     byId("worklogDate").value = todayValue();
-    byId("detailedDate").value = todayValue();
-    setWorklogMode("quick");
 
     ["searchBox", "statusFilter", "typeFilter", "engineerFilter", "ageFilter"].forEach((id) => {
       byId(id).addEventListener("input", render);
       byId(id).addEventListener("change", render);
     });
 
-    byId("saveWorklog").addEventListener("click", saveDailyWorklog);
-    byId("clearWorklog").addEventListener("click", () => clearWorklogForm());
+    byId("syncCrmWorklogs").addEventListener("click", syncCrmWorklogs);
     byId("toggleMapLocationBreakup").addEventListener("click", (event) => {
       const breakup = byId("mapLocationBreakup");
       const isExpanded = event.currentTarget.getAttribute("aria-expanded") === "true";
@@ -3813,28 +3950,11 @@
       layout.classList.toggle("details-collapsed", isExpanded);
       if (engineerStatusMap) setTimeout(() => engineerStatusMap.invalidateSize(), 0);
     });
-    document.querySelectorAll("[data-worklog-mode]").forEach((button) => {
-      button.addEventListener("click", () => setWorklogMode(button.dataset.worklogMode));
-    });
-    byId("detailedService").addEventListener("change", populateDetailedEngineers);
-    byId("detailedProgress").addEventListener("input", (event) => {
-      byId("detailedProgressValue").textContent = `${event.target.value}%`;
-    });
-    byId("detailedStatus").addEventListener("change", (event) => {
-      if (event.target.value === "Completed") {
-        byId("detailedProgress").value = "100";
-        byId("detailedProgressValue").textContent = "100%";
-      }
-    });
-    byId("detailedDate").addEventListener("change", (event) => {
-      byId("worklogDate").value = event.target.value;
-      render();
-    });
     byId("openNewRequest").addEventListener("click", openNewRequestModal);
     byId("closeNewRequest").addEventListener("click", closeNewRequestModal);
     byId("cancelNewRequest").addEventListener("click", closeNewRequestModal);
     byId("newRequestForm").addEventListener("submit", addServiceRequest);
-    byId("worklogDate").addEventListener("change", render);
+    byId("worklogDate").addEventListener("change", syncCrmWorklogs);
     byId("worklogEngineerFilter").addEventListener("change", render);
     byId("clearSummaryFilter").addEventListener("click", () => {
       activeSummaryFilter = "all";
@@ -3946,7 +4066,7 @@
       });
     });
 
-    render();
+    syncCrmWorklogs();
   </script>
 </body>
 </html>
