@@ -1637,12 +1637,7 @@
         <article class="metric-card danger" data-summary-filter="over30" role="button" tabindex="0" aria-pressed="false">
           <div class="metric-label">Over 30 Days</div>
           <div class="metric-value" id="overdueCount">0</div>
-          <div class="metric-note">Needs priority review</div>
-        </article>
-        <article class="metric-card danger" data-summary-filter="priority" role="button" tabindex="0" aria-pressed="false">
-          <div class="metric-label">Needs Priority Review</div>
-          <div class="metric-value" id="priorityCount">0</div>
-          <div class="metric-note">High priority or SLA breach</div>
+          <div class="metric-note">Open beyond 30 days</div>
         </article>
         <article class="metric-card" data-summary-filter="gps" role="button" tabindex="0" aria-pressed="false">
           <div class="metric-label">GPS Units</div>
@@ -2266,10 +2261,6 @@
       over30: {
         label: "Requests Open Over 30 Days",
         match: (item) => item.age > 30
-      },
-      priority: {
-        label: "Needs Priority Review",
-        match: (item) => item.priority === "High" || item.age > 30
       },
       gps: {
         label: "Requests Containing GPS Installations",
@@ -3187,7 +3178,6 @@
       byId("ongoingCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.ongoing.match).length);
       byId("workInProgressCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.workInProgress.match).length);
       byId("overdueCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.over30.match).length);
-      byId("priorityCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.priority.match).length);
       byId("gpsTotal").textContent = formatNumber(enrichedRequests.reduce((sum, item) => sum + item.gps, 0));
       byId("fmsTotal").textContent = formatNumber(enrichedRequests.reduce((sum, item) => sum + item.fms, 0));
     }
