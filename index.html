@@ -3,6 +3,4069 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="crm-worklog-endpoint" content="">
+  <title>Service Tracker Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f2f5f9;
+      --surface: #ffffff;
+      --surface-soft: #edf2f7;
+      --ink: #172033;
+      --muted: #637083;
+      --line: #d8e0ea;
+      --brand: #0d8278;
+      --brand-dark: #075f59;
+      --amber: #c96b12;
+      --yellow: #f2c94c;
+      --red: #d33f4f;
+      --blue: #2f67c8;
+      --green: #16815f;
+      --shadow: 0 14px 34px rgba(25, 42, 67, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #17324d;
+      color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .topbar-inner {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand-block h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 780;
+      letter-spacing: 0;
+    }
+
+    .brand-block p {
+      margin: 5px 0 0;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 14px;
+    }
+
+    .date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.86);
+      background: rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
+
+    main {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 36px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-card,
+    .panel,
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    .metric-card {
+      --card-accent: var(--brand);
+      min-height: 114px;
+      padding: 16px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      transform: translateY(0) scale(1);
+      transform-origin: center;
+      transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background 220ms ease, outline-color 220ms ease;
+      will-change: transform;
+      outline: 3px solid transparent;
+      outline-offset: 3px;
+    }
+
+    .metric-card:hover,
+    .metric-card:focus-visible {
+      border-color: var(--card-accent);
+      background: linear-gradient(180deg, #ffffff 0%, #e6f7f4 100%);
+      box-shadow: 0 34px 68px rgba(25, 42, 67, 0.3), 0 12px 24px rgba(25, 42, 67, 0.16), 0 0 0 7px rgba(13, 130, 120, 0.1);
+      transform: translateY(-14px) scale(1.06);
+      z-index: 20;
+      outline-color: rgba(13, 130, 120, 0.24);
+    }
+
+    .metric-card.active {
+      background: #ecf9f7;
+      border-color: var(--brand);
+      box-shadow: 0 18px 36px rgba(13, 130, 120, 0.2);
+      transform: translateY(-3px);
+      z-index: 5;
+    }
+
+    .metric-card.active:hover,
+    .metric-card.active:focus-visible {
+      border-color: var(--card-accent);
+      background: linear-gradient(180deg, #ffffff 0%, #dff5f1 100%);
+      box-shadow: 0 36px 72px rgba(13, 130, 120, 0.34), 0 12px 24px rgba(25, 42, 67, 0.16), 0 0 0 8px rgba(13, 130, 120, 0.12);
+      transform: translateY(-14px) scale(1.06);
+      z-index: 20;
+      outline-color: rgba(13, 130, 120, 0.3);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric-value {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 780;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .metric-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric-card.danger .metric-value {
+      color: var(--red);
+    }
+
+    .metric-card.warning .metric-value {
+      color: var(--amber);
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.5fr) repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+      align-items: end;
+      margin: 18px 0;
+      padding: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 740;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #cbd6dc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(13, 130, 120, 0.16);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .panel {
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .panel-subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) 38px;
+      gap: 10px;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .bar-track {
+      height: 12px;
+      background: var(--surface-soft);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--brand);
+      border-radius: inherit;
+      width: var(--value, 0%);
+    }
+
+    .bar-fill.pending {
+      background: var(--amber);
+    }
+
+    .bar-fill.overdue {
+      background: var(--red);
+    }
+
+    .engineer-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .engineer-item {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .engineer-name {
+      font-weight: 760;
+      overflow-wrap: anywhere;
+    }
+
+    .engineer-meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .location-list,
+    .type-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .compact-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) minmax(90px, 2fr) 34px;
+      gap: 8px;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .map-panel {
+      margin-bottom: 14px;
+    }
+
+    .map-layout {
+      display: grid;
+      grid-template-columns: minmax(520px, 1.65fr) minmax(260px, 0.7fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .request-map-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .engineer-map-layout {
+      grid-template-columns: minmax(360px, 1.1fr) minmax(260px, 0.9fr);
+    }
+
+    .engineer-map-layout.details-collapsed {
+      grid-template-columns: 1fr;
+    }
+
+    .map-stage {
+      position: relative;
+      min-height: 620px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #dbe8ee;
+      overflow: hidden;
+    }
+
+    #serviceMap {
+      width: 100%;
+      height: 100%;
+      min-height: 620px;
+    }
+
+    #engineerStatusMap {
+      width: 100%;
+      height: 100%;
+      min-height: 480px;
+    }
+
+    #engineerMapStage {
+      min-height: 480px;
+    }
+
+    .leaflet-container {
+      font: inherit;
+    }
+
+    .service-map-pin {
+      --pin-color: #d33f4f;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 3px solid #fff;
+      border-radius: 999px 999px 999px 3px;
+      background: var(--pin-color);
+      color: #111827;
+      font-size: 12px;
+      font-weight: 820;
+      box-shadow: 0 8px 18px rgba(25, 42, 67, 0.24);
+      transform: rotate(-45deg);
+    }
+
+    .service-map-pin span {
+      transform: rotate(45deg);
+    }
+
+    .service-map-pin.ongoing {
+      --pin-color: #18a36f;
+      color: #052e16;
+    }
+
+    .service-map-pin.pending {
+      --pin-color: #d33f4f;
+      color: #fff;
+    }
+
+    .service-map-pin.new {
+      --pin-color: var(--yellow);
+    }
+
+    .engineer-map-pin {
+      --pin-color: #d33f4f;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 3px solid #fff;
+      border-radius: 999px;
+      background: var(--pin-color);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 820;
+      box-shadow: 0 8px 18px rgba(25, 42, 67, 0.24);
+      white-space: nowrap;
+    }
+
+    .engineer-map-pin.working {
+      --pin-color: #18a36f;
+      color: #052e16;
+    }
+
+    .engineer-map-pin.no-work {
+      --pin-color: #d33f4f;
+    }
+
+    .map-fallback {
+      display: none;
+      height: 100%;
+      min-height: 480px;
+      place-items: center;
+      padding: 24px;
+      color: var(--muted);
+      text-align: center;
+      background: #f7fbfc;
+    }
+
+    .map-stage.map-unavailable #serviceMap {
+      display: none;
+    }
+
+    .map-stage.map-unavailable #engineerStatusMap {
+      display: none;
+    }
+
+    .map-stage.map-unavailable .map-fallback {
+      display: grid;
+    }
+
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--dot);
+    }
+
+    .map-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .request-map-layout .map-list {
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    }
+
+    .map-location-breakup {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .map-location-breakup[hidden] {
+      display: none;
+    }
+
+    .engineer-status-breakup[hidden] {
+      display: none;
+    }
+
+    .map-list-item {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .map-list-item:last-child {
+      border-bottom: 0;
+    }
+
+    .map-status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--dot);
+    }
+
+    .map-place {
+      min-width: 0;
+    }
+
+    .map-place strong {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .map-place span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .map-count {
+      font-weight: 820;
+    }
+
+    .worklog-panel {
+      margin-bottom: 14px;
+    }
+
+    .worklog-mode-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 14px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7fafb;
+    }
+
+    .worklog-mode-bar[hidden],
+    .worklog-actions[hidden] {
+      display: none;
+    }
+
+    .worklog-mode-tabs {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid #cbd6dc;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .worklog-mode-button {
+      min-height: 36px;
+      padding: 7px 13px;
+      border: 0;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 780;
+      cursor: pointer;
+    }
+
+    .worklog-mode-button.active {
+      color: #fff;
+      background: var(--brand);
+    }
+
+    .worklog-mode-copy {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .worklog-pane[hidden] {
+      display: none;
+    }
+
+    .worklog-grid.detailed {
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      align-items: start;
+    }
+
+    .field-wide {
+      grid-column: span 2;
+    }
+
+    .field input[type="range"] {
+      padding: 0;
+      accent-color: var(--brand);
+    }
+
+    .progress-field-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 54px;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+    }
+
+    .progress-value {
+      color: var(--brand-dark);
+      font-weight: 820;
+      text-align: right;
+    }
+
+    .worklog-file-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .worklog-grid {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.1fr) repeat(3, minmax(145px, 0.7fr)) minmax(260px, 1.2fr);
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field textarea {
+      width: 100%;
+      min-height: 98px;
+      resize: vertical;
+      border: 1px solid #cbd6dc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    .field textarea:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(13, 130, 120, 0.16);
+    }
+
+    .field select[multiple] {
+      min-height: 126px;
+      padding: 7px;
+    }
+
+    .multi-select {
+      position: relative;
+    }
+
+    .multi-select summary {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid #cbd6dc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .multi-select summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .multi-select summary::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg) translateY(-2px);
+      flex: 0 0 auto;
+    }
+
+    .multi-select[open] summary {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(13, 130, 120, 0.16);
+    }
+
+    .multi-select-options {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 16px 32px rgba(24, 33, 42, 0.15);
+      padding: 6px;
+    }
+
+    .multi-select-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 6px;
+      color: var(--ink);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .multi-select-option:hover {
+      background: #f2f7f7;
+    }
+
+    .multi-select-option input {
+      width: auto;
+      min-height: auto;
+      margin-top: 3px;
+      accent-color: var(--brand);
+    }
+
+    .worklog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .primary-button,
+    .secondary-button {
+      min-height: 40px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 8px 13px;
+      font-weight: 780;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .secondary-button {
+      background: #fff;
+      color: var(--brand-dark);
+      border-color: #99d8d2;
+    }
+
+    .worklog-message {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .crm-sync-bar {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.7fr) minmax(210px, 0.9fr) auto minmax(220px, 1.4fr);
+      gap: 12px;
+      align-items: end;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7fafb;
+    }
+
+    .crm-sync-status {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .crm-feed-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .crm-source-chip {
+      display: inline-flex;
+      margin-top: 8px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #075e54;
+      background: #dff5f1;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .worklog-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .worklog-item {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .worklog-item strong {
+      display: block;
+      margin-bottom: 3px;
+      overflow-wrap: anywhere;
+    }
+
+    .worklog-item span,
+    .latest-log {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .latest-log strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap {
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .table-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .result-count {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .table-filter-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .active-filter-label {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 720;
+    }
+
+    .clear-filter-button {
+      min-height: 34px;
+      border: 1px solid #99d8d2;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--brand-dark);
+      padding: 6px 10px;
+      font-weight: 780;
+      cursor: pointer;
+    }
+
+    .clear-filter-button[hidden] {
+      display: none;
+    }
+
+    .detail-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(24, 33, 42, 0.42);
+    }
+
+    .detail-modal.open {
+      display: flex;
+    }
+
+    .detail-window {
+      width: min(980px, calc(100vw - 32px));
+      max-height: min(680px, calc(100vh - 32px));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 26px 70px rgba(24, 33, 42, 0.28);
+    }
+
+    .detail-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .detail-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .detail-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .detail-close {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .detail-body {
+      overflow: auto;
+    }
+
+    .detail-body table {
+      min-width: 860px;
+      box-shadow: none;
+    }
+
+    .detail-status-select {
+      min-height: 34px;
+      border: 1px solid #cbd6dc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 5px 8px;
+      outline: none;
+    }
+
+    .detail-status-select:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+
+    .detail-empty {
+      padding: 26px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .request-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .request-form-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .form-message {
+      margin-right: auto;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .history-window {
+      width: min(1180px, calc(100vw - 32px));
+      max-height: min(760px, calc(100vh - 32px));
+    }
+
+    .history-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(160px, 1fr)) auto auto;
+      gap: 10px;
+      align-items: end;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .history-summary {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .history-metric {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .history-metric strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .history-metric span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .project-section {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .project-section summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 16px;
+      cursor: pointer;
+      list-style: none;
+      background: #fff;
+    }
+
+    .project-section summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .project-section summary strong {
+      display: block;
+    }
+
+    .project-section summary span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .history-table-wrap {
+      overflow-x: auto;
+      padding: 0 16px 14px;
+    }
+
+    .history-table {
+      min-width: 1320px;
+    }
+
+    .history-table tr.no-work-row td,
+    .history-table tr.missing-row td {
+      background: #fef2f2;
+      color: #7f1d1d;
+    }
+
+    .completed-filters {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .document-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .document-actions input {
+      max-width: 170px;
+      font-size: 12px;
+    }
+
+    .text-link-button {
+      border: 0;
+      background: transparent;
+      color: var(--brand-dark);
+      cursor: pointer;
+      font-weight: 780;
+      padding: 0;
+    }
+
+    .breakup-table {
+      min-width: 980px;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    body {
+      background:
+        linear-gradient(180deg, #e8eef5 0, #f7f9fc 320px, #f2f5f9 100%);
+    }
+
+    .topbar {
+      background:
+        linear-gradient(135deg, #17324d 0%, #0d8278 52%, #315b8a 100%);
+      box-shadow: 0 18px 46px rgba(23, 50, 77, 0.24);
+    }
+
+    .topbar-inner {
+      min-height: 96px;
+    }
+
+    .brand-block h1 {
+      font-size: clamp(26px, 3vw, 40px);
+    }
+
+    .brand-block p {
+      color: rgba(255, 255, 255, 0.82);
+      font-weight: 520;
+    }
+
+    .date-pill {
+      border-color: rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      font-weight: 720;
+    }
+
+    main {
+      padding-top: 26px;
+    }
+
+    .top-actions {
+      padding: 12px;
+      border: 1px solid rgba(13, 130, 120, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 0 12px 28px rgba(25, 42, 67, 0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .metric-card,
+    .panel,
+    .table-wrap,
+    .toolbar {
+      border-color: rgba(200, 211, 224, 0.9);
+      box-shadow: 0 16px 38px rgba(25, 42, 67, 0.09);
+    }
+
+    .metric-card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .metric-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: var(--card-accent);
+    }
+
+    @property --border-angle {
+      syntax: "<angle>";
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    .metric-card::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      padding: 3px;
+      border-radius: 6px;
+      pointer-events: none;
+      opacity: 0;
+      background: conic-gradient(from var(--border-angle), transparent 0deg, transparent 255deg, var(--card-accent) 315deg, transparent 360deg) border-box;
+      -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      transition: opacity 180ms ease;
+    }
+
+    .metric-card:hover::after {
+      opacity: 1;
+      animation: card-border-orbit 1.8s linear infinite;
+    }
+
+    .metric-card:focus-visible::after {
+      opacity: 1;
+    }
+
+    @keyframes card-border-orbit {
+      to { --border-angle: 360deg; }
+    }
+
+    .metric-card:nth-child(1) { --card-accent: #17324d; }
+    .metric-card:nth-child(2) { --card-accent: #d99024; }
+    .metric-card:nth-child(3) { --card-accent: #16815f; }
+    .metric-card:nth-child(4) { --card-accent: #0d8278; }
+    .metric-card:nth-child(5) { --card-accent: #2f67c8; }
+    .metric-card:nth-child(6) { --card-accent: #d33f4f; }
+    .metric-card:nth-child(7) { --card-accent: #c96b12; }
+    .metric-card:nth-child(8) { --card-accent: #168da3; }
+    .metric-card:nth-child(9) { --card-accent: #6558b1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .metric-card:hover::after {
+        animation: none;
+      }
+    }
+
+    .metric-card.active {
+      background: linear-gradient(180deg, #eaf8f6 0%, #ffffff 100%);
+    }
+
+    .metric-label {
+      color: #5b687b;
+    }
+
+    .metric-value {
+      color: #172033;
+    }
+
+    .metric-note {
+      color: #6b7789;
+      font-weight: 560;
+    }
+
+    .toolbar,
+    .table-filter-strip,
+    .completed-filters,
+    .history-controls,
+    .history-summary,
+    .request-form-actions {
+      background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
+    }
+
+    .panel h2,
+    .table-head h2,
+    .detail-head h2 {
+      color: #172033;
+      font-weight: 820;
+    }
+
+    .panel-subtitle {
+      color: #6b7789;
+    }
+
+    .panel,
+    .table-wrap {
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(216, 224, 234, 0.8);
+    }
+
+    .map-stage {
+      border-color: #c3d0de;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+    }
+
+    .map-list-item,
+    .engineer-item,
+    .worklog-item,
+    .history-metric {
+      background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
+    }
+
+    .primary-button {
+      background: linear-gradient(135deg, #0d8278, #2f67c8);
+      box-shadow: 0 10px 20px rgba(13, 130, 120, 0.22);
+    }
+
+    .primary-button:hover,
+    .secondary-button:hover,
+    .clear-filter-button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-button,
+    .secondary-button,
+    .clear-filter-button,
+    .text-link-button {
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    }
+
+    .secondary-button,
+    .clear-filter-button {
+      box-shadow: 0 8px 18px rgba(25, 42, 67, 0.07);
+    }
+
+    th {
+      background: #eaf0f6;
+      color: #43536a;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9fbfd;
+    }
+
+    tbody tr:hover {
+      background: #eaf8f6;
+    }
+
+    .badge {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+    }
+
+    .detail-modal {
+      backdrop-filter: blur(6px);
+    }
+
+    .detail-window {
+      border-color: rgba(194, 208, 216, 0.9);
+      box-shadow: 0 30px 90px rgba(15, 23, 42, 0.32);
+    }
+
+    .detail-head {
+      background: linear-gradient(135deg, #ffffff 0%, #eaf3f8 100%);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1260px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #eaf0f6;
+      color: #43536a;
+      font-size: 12px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: #eef8f7;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 760;
+      border: 1px solid transparent;
+    }
+
+    .badge.pending {
+      background: #fff5e8;
+      color: var(--amber);
+      border-color: #f3c58b;
+    }
+
+    .badge.ongoing {
+      background: #e7f8f6;
+      color: var(--brand-dark);
+      border-color: #91d8d0;
+    }
+
+    .badge.installation {
+      background: #eff6ff;
+      color: var(--blue);
+      border-color: #bfdbfe;
+    }
+
+    .badge.troubleshooting {
+      background: #fef2f2;
+      color: var(--red);
+      border-color: #fecaca;
+    }
+
+    .badge.both {
+      background: #f0fdf4;
+      color: var(--green);
+      border-color: #bbf7d0;
+    }
+
+    .age-chip {
+      font-weight: 760;
+      color: var(--ink);
+    }
+
+    .age-chip.high {
+      color: var(--red);
+    }
+
+    .age-chip.mid {
+      color: var(--amber);
+    }
+
+    .empty-state {
+      display: none;
+      padding: 26px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state.visible {
+      display: block;
+    }
+
+    @media (max-width: 1180px) {
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .toolbar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .content-grid,
+      .map-layout,
+      .worklog-grid,
+      .worklog-grid.detailed,
+      .crm-sync-bar,
+      .history-controls,
+      .completed-filters,
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .worklog-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .field-wide {
+        grid-column: auto;
+      }
+
+      .history-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner,
+      main {
+        width: min(100% - 20px, 1440px);
+      }
+
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px 0;
+      }
+
+      .summary-grid,
+      .toolbar,
+      .engineer-list,
+      .worklog-list {
+        grid-template-columns: 1fr;
+      }
+
+      .top-actions {
+        justify-content: stretch;
+      }
+
+      .top-actions .primary-button {
+        width: 100%;
+      }
+
+      .worklog-mode-bar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .worklog-mode-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .bar-row,
+      .compact-row {
+        grid-template-columns: 96px minmax(0, 1fr) 30px;
+      }
+
+      .table-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .table-filter-strip {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .map-stage,
+      #serviceMap,
+      #engineerStatusMap,
+      .map-fallback {
+        min-height: 390px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-block">
+          <h1>Service Tracker Dashboard</h1>
+          <p>Installation and troubleshooting queue for KPIL and VSEPL sites</p>
+        </div>
+        <div class="date-pill" id="asOfDate">As of 22 Jun 2026</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="top-actions" aria-label="Primary actions">
+        <button class="primary-button" id="openNewRequest" type="button">Add New Service Request</button>
+      </section>
+
+      <section class="summary-grid" aria-label="Service summary">
+        <article class="metric-card" data-summary-filter="all" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Total Requests</div>
+          <div class="metric-value" id="totalRequests">0</div>
+          <div class="metric-note">All active tracker rows</div>
+        </article>
+        <article class="metric-card warning" data-summary-filter="pending" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Pending</div>
+          <div class="metric-value" id="pendingCount">0</div>
+          <div class="metric-note">Awaiting closure</div>
+        </article>
+        <article class="metric-card warning" data-summary-filter="completed" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Completed Requests</div>
+          <div class="metric-value" id="completedRequestsCount">0</div>
+          <div class="metric-note">Completed work requests</div>
+        </article>
+        <article class="metric-card" data-summary-filter="ongoing" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Ongoing Site Work</div>
+          <div class="metric-value" id="ongoingCount">0</div>
+          <div class="metric-note">Work in progress</div>
+        </article>
+        <article class="metric-card" data-summary-filter="workInProgress" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Work in Progress</div>
+          <div class="metric-value" id="workInProgressCount">0</div>
+          <div class="metric-note">Active field work</div>
+        </article>
+        <article class="metric-card danger" data-summary-filter="over30" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Over 30 Days</div>
+          <div class="metric-value" id="overdueCount">0</div>
+          <div class="metric-note">Needs priority review</div>
+        </article>
+        <article class="metric-card danger" data-summary-filter="priority" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">Needs Priority Review</div>
+          <div class="metric-value" id="priorityCount">0</div>
+          <div class="metric-note">High priority or SLA breach</div>
+        </article>
+        <article class="metric-card" data-summary-filter="gps" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">GPS Units</div>
+          <div class="metric-value" id="gpsTotal">0</div>
+          <div class="metric-note">Total requested quantity</div>
+        </article>
+        <article class="metric-card" data-summary-filter="fms" role="button" tabindex="0" aria-pressed="false">
+          <div class="metric-label">FMS Units</div>
+          <div class="metric-value" id="fmsTotal">0</div>
+          <div class="metric-note">Total requested quantity</div>
+        </article>
+      </section>
+
+      <section class="toolbar" aria-label="Dashboard filters">
+        <div class="field">
+          <label for="searchBox">Search</label>
+          <input id="searchBox" type="search" placeholder="Site, location, engineer, client">
+        </div>
+        <div class="field">
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter">
+            <option value="All">All statuses</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="typeFilter">Type</label>
+          <select id="typeFilter">
+            <option value="All">All types</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="engineerFilter">Engineer</label>
+          <select id="engineerFilter">
+            <option value="All">All engineers</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ageFilter">Age</label>
+          <select id="ageFilter">
+            <option value="All">All ages</option>
+            <option value="0-7">0-7 days</option>
+            <option value="8-30">8-30 days</option>
+            <option value="31+">31+ days</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel map-panel">
+        <div class="panel-head">
+          <div>
+            <h2>India Service Request Map</h2>
+            <p class="panel-subtitle">Yellow marks new requests, green marks ongoing work, and red marks pending sites</p>
+          </div>
+          <button class="secondary-button" id="toggleMapLocationBreakup" type="button" aria-expanded="false" aria-controls="mapLocationBreakup">
+            Expand location data
+          </button>
+        </div>
+        <div class="request-map-layout">
+          <div class="map-location-breakup" id="mapLocationBreakup" hidden>
+            <div class="map-list" id="mapLocationList"></div>
+          </div>
+          <div>
+            <div class="map-stage" id="mapStage" aria-label="Interactive India map with service request locations">
+              <div id="serviceMap"></div>
+              <div class="map-fallback">Map tiles could not load. Please check the internet connection and refresh this dashboard.</div>
+            </div>
+            <div class="map-legend" aria-label="Map status legend">
+              <span class="legend-item"><span class="legend-dot" style="--dot: #f2c94c"></span>New request</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot: #18a36f"></span>Ongoing</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot: #d33f4f"></span>Pending</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel map-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Service Engineer Work Status Map</h2>
+            <p class="panel-subtitle">Daily work allocation and availability based on CRM service tasks</p>
+          </div>
+          <button class="secondary-button" id="toggleEngineerStatusBreakup" type="button" aria-expanded="false" aria-controls="engineerStatusBreakup">
+            Expand engineer data
+          </button>
+        </div>
+        <div class="map-layout engineer-map-layout details-collapsed" id="engineerMapLayout">
+          <div>
+            <div class="map-stage" id="engineerMapStage" aria-label="Interactive India map with service engineer work status">
+              <div id="engineerStatusMap"></div>
+              <div class="map-fallback">Map tiles could not load. Please check the internet connection and refresh this dashboard.</div>
+            </div>
+            <div class="map-legend" aria-label="Engineer map status legend">
+              <span class="legend-item"><span class="legend-dot" style="--dot: #18a36f"></span>Working</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot: #d33f4f"></span>No Work</span>
+            </div>
+          </div>
+          <div class="engineer-status-breakup" id="engineerStatusBreakup" hidden>
+            <div class="map-list" id="engineerStatusList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel worklog-panel" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>CRM Daily Service Tasks</h2>
+            <p class="panel-subtitle">Read-only worklogs synchronized from CRM; manual entry is disabled</p>
+          </div>
+        </div>
+        <div class="crm-sync-bar">
+          <div class="field">
+            <label for="worklogDate">Task Date</label>
+            <input id="worklogDate" type="date">
+          </div>
+          <div class="field">
+            <label for="worklogEngineerFilter">Service Engineer</label>
+            <select id="worklogEngineerFilter">
+              <option value="All">All engineers</option>
+            </select>
+          </div>
+          <button class="primary-button" id="syncCrmWorklogs" type="button">Sync CRM Tasks</button>
+          <div class="crm-sync-status" id="crmSyncStatus" role="status">Waiting for CRM synchronization.</div>
+        </div>
+        <div class="crm-feed-head">
+          <strong>Daily service task worklogs</strong>
+          <span class="panel-subtitle" id="crmTaskCount">0 tasks</span>
+        </div>
+        <div class="worklog-mode-bar" hidden>
+          <div class="worklog-mode-tabs" role="tablist" aria-label="Work log entry mode">
+            <button class="worklog-mode-button active" id="quickModeButton" data-worklog-mode="quick" type="button" role="tab" aria-selected="true">Quick Update</button>
+            <button class="worklog-mode-button" id="detailedModeButton" data-worklog-mode="detailed" type="button" role="tab" aria-selected="false">Detailed Entry</button>
+          </div>
+          <span class="worklog-mode-copy" id="worklogModeCopy">Update several service requests with one common activity</span>
+        </div>
+        <div class="worklog-pane" id="quickWorklogPane" hidden>
+          <div class="worklog-grid">
+            <div class="field">
+              <label for="worklogServices">Service Requests</label>
+              <details class="multi-select" id="worklogServices">
+                <summary id="worklogSummary">Select services</summary>
+                <div class="multi-select-options" id="worklogServiceOptions"></div>
+              </details>
+            </div>
+            <div class="field">
+              <label for="worklogStatus">Work Status</label>
+              <select id="worklogStatus">
+                <option value="In progress">In progress</option>
+                <option value="Site visit done">Site visit done</option>
+                <option value="Material pending">Material pending</option>
+                <option value="Customer hold">Customer hold</option>
+                <option value="Travel">Travel</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="worklogNote">Common Activity</label>
+              <textarea id="worklogNote" placeholder="Enter the update applied to all selected requests"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="worklog-pane" id="detailedWorklogPane" hidden>
+          <div class="worklog-grid detailed">
+            <div class="field field-wide">
+              <label for="detailedService">Service Request</label>
+              <select id="detailedService"></select>
+            </div>
+            <div class="field">
+              <label for="detailedDate">Log Date</label>
+              <input id="detailedDate" type="date">
+            </div>
+            <div class="field">
+              <label for="detailedEngineer">Service Engineer</label>
+              <select id="detailedEngineer"></select>
+            </div>
+            <div class="field">
+              <label for="detailedWorkMode">Work Mode</label>
+              <select id="detailedWorkMode">
+                <option value="Site Work">Site Work</option>
+                <option value="Office Work">Office Work</option>
+                <option value="Remote Support">Remote Support</option>
+                <option value="Travel">Travel</option>
+                <option value="On Leave">On Leave</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="detailedStatus">Work Status</label>
+              <select id="detailedStatus">
+                <option value="In progress">In progress</option>
+                <option value="Site visit done">Site visit done</option>
+                <option value="Material pending">Material pending</option>
+                <option value="Customer hold">Customer hold</option>
+                <option value="Travel">Travel</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="detailedCheckIn">Check-in Time</label>
+              <input id="detailedCheckIn" type="time">
+            </div>
+            <div class="field">
+              <label for="detailedCheckOut">Check-out Time</label>
+              <input id="detailedCheckOut" type="time">
+            </div>
+            <div class="field">
+              <label for="detailedNewInstallation">New Installation Count</label>
+              <input id="detailedNewInstallation" type="number" min="0" value="0">
+            </div>
+            <div class="field">
+              <label for="detailedServiceCount">Service Count</label>
+              <input id="detailedServiceCount" type="number" min="0" value="0">
+            </div>
+            <div class="field field-wide">
+              <label for="detailedProgress">Daily Progress</label>
+              <div class="progress-field-row">
+                <input id="detailedProgress" type="range" min="0" max="100" step="5" value="0">
+                <span class="progress-value" id="detailedProgressValue">0%</span>
+              </div>
+            </div>
+            <div class="field field-wide">
+              <label for="detailedActivity">Work Performed / Activity</label>
+              <textarea id="detailedActivity" placeholder="Describe the work completed today"></textarea>
+            </div>
+            <div class="field field-wide">
+              <label for="detailedPending">Pending Work</label>
+              <textarea id="detailedPending" placeholder="List remaining tasks, blockers, or dependencies"></textarea>
+            </div>
+            <div class="field field-wide">
+              <label for="detailedRemarks">Remarks / Notes</label>
+              <textarea id="detailedRemarks" placeholder="Add site observations or management notes"></textarea>
+            </div>
+            <div class="field field-wide">
+              <label for="detailedAttachments">Photos / Attachments</label>
+              <input id="detailedAttachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+              <div class="worklog-file-note">Selected file names will be linked to this daily entry.</div>
+            </div>
+          </div>
+        </div>
+        <div class="worklog-actions" hidden>
+          <button class="primary-button" id="saveWorklog" type="button">Save Work Log</button>
+          <button class="secondary-button" id="clearWorklog" type="button">Clear</button>
+          <span class="worklog-message" id="worklogMessage"></span>
+        </div>
+        <div class="worklog-list" id="recentWorklogs"></div>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Status Snapshot</h2>
+              <p class="panel-subtitle">Share of requests by current status</p>
+            </div>
+          </div>
+          <div class="status-bars" id="statusBars"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Engineer Load</h2>
+              <p class="panel-subtitle">Assigned requests, including shared assignments</p>
+            </div>
+          </div>
+          <div class="engineer-list" id="engineerList"></div>
+        </article>
+      </section>
+
+      <section class="chart-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Service Type Mix</h2>
+              <p class="panel-subtitle">Installation, troubleshooting, and combined jobs</p>
+            </div>
+          </div>
+          <div class="type-list" id="typeList"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Location Hotspots</h2>
+              <p class="panel-subtitle">Highest request concentration by location</p>
+            </div>
+          </div>
+          <div class="location-list" id="locationList"></div>
+        </article>
+      </section>
+
+      <section class="table-wrap">
+        <div class="table-head">
+          <h2>Service Request Tracker</h2>
+          <div class="result-count" id="resultCount">0 records</div>
+        </div>
+        <div class="table-filter-strip">
+          <div class="active-filter-label" id="activeFilterLabel">Showing: All Active Requests</div>
+          <button class="clear-filter-button" id="clearSummaryFilter" type="button" hidden>Clear Filter</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Sl.No</th>
+                <th>Requested Date</th>
+                <th>Planned Date</th>
+                <th>Age</th>
+                <th>Client</th>
+                <th>Site</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>GPS</th>
+                <th>FMS</th>
+                <th>Pending Since</th>
+                <th>Status</th>
+                <th>Engineer</th>
+                <th>Latest Work Log</th>
+              </tr>
+            </thead>
+            <tbody id="trackerBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="emptyState">No records match the selected filters.</div>
+      </section>
+
+      <section class="table-wrap" hidden>
+        <div class="table-head">
+          <div>
+            <h2>Completed Work Requests</h2>
+            <div class="panel-subtitle">Completed site work with visit documents, estimates, and day-wise breakup</div>
+          </div>
+          <div class="result-count" id="completedResultCount">0 records</div>
+        </div>
+        <div class="completed-filters">
+          <div class="field">
+            <label for="completedSearch">Search</label>
+            <input id="completedSearch" type="search" placeholder="Site, BU, engineer">
+          </div>
+          <div class="field">
+            <label for="completedBuFilter">BU</label>
+            <select id="completedBuFilter"><option value="All">All BU</option></select>
+          </div>
+          <div class="field">
+            <label for="completedSiteFilter">Site</label>
+            <select id="completedSiteFilter"><option value="All">All sites</option></select>
+          </div>
+          <div class="field">
+            <label for="completedRequestDateFilter">Request Date</label>
+            <input id="completedRequestDateFilter" type="date">
+          </div>
+          <div class="field">
+            <label for="completedEngineerFilter">Service Engineer</label>
+            <select id="completedEngineerFilter"><option value="All">All engineers</option></select>
+          </div>
+          <div class="field">
+            <label for="completedDateFilter">Completed Date</label>
+            <input id="completedDateFilter" type="date">
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>BU</th>
+                <th>Site</th>
+                <th>Request Date</th>
+                <th>Person Reached</th>
+                <th>No. of Tasks</th>
+                <th>New Installation</th>
+                <th>Service</th>
+                <th>Tasks Completed</th>
+                <th>Person Returned</th>
+                <th>Days in Site</th>
+                <th>Site Visit Document</th>
+                <th>Site Visit Estimate</th>
+                <th>Worklog Daywise Breakup</th>
+              </tr>
+            </thead>
+            <tbody id="completedWorkBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="completedEmptyState">No completed work requests found.</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="detail-modal" id="summaryDetailModal" role="dialog" aria-modal="true" aria-labelledby="summaryDetailTitle">
+    <div class="detail-window">
+      <div class="detail-head">
+        <div>
+          <h2 id="summaryDetailTitle">Tracker Request Details</h2>
+          <p id="summaryDetailMeta">0 records</p>
+        </div>
+        <button class="detail-close" id="closeSummaryDetail" type="button" aria-label="Close details">&times;</button>
+      </div>
+      <div class="detail-body" id="summaryDetailBody"></div>
+    </div>
+  </div>
+
+  <div class="detail-modal" id="newRequestModal" role="dialog" aria-modal="true" aria-labelledby="newRequestTitle">
+    <div class="detail-window">
+      <div class="detail-head">
+        <div>
+          <h2 id="newRequestTitle">Add New Service Request</h2>
+          <p>Create a new tracker entry with requested and planned dates</p>
+        </div>
+        <button class="detail-close" id="closeNewRequest" type="button" aria-label="Close new request form">&times;</button>
+      </div>
+      <form id="newRequestForm">
+        <div class="request-form-grid">
+          <div class="field">
+            <label for="newRequestDate">Service Requested Date</label>
+            <input id="newRequestDate" type="date" required>
+          </div>
+          <div class="field">
+            <label for="newPlannedDate">Planned Date</label>
+            <input id="newPlannedDate" type="date" required>
+          </div>
+          <div class="field">
+            <label for="newClient">Client</label>
+            <input id="newClient" type="text" placeholder="KPIL" required>
+          </div>
+          <div class="field">
+            <label for="newSite">Site</label>
+            <input id="newSite" type="text" placeholder="Site code/name" required>
+          </div>
+          <div class="field">
+            <label for="newLocation">Location</label>
+            <input id="newLocation" type="text" placeholder="City, State" required>
+          </div>
+          <div class="field">
+            <label for="newType">Type</label>
+            <select id="newType" required>
+              <option value="Installation">Installation</option>
+              <option value="Troubleshooting">Troubleshooting</option>
+              <option value="Both">Both</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newGps">GPS Quantity</label>
+            <input id="newGps" type="number" min="0" value="0" required>
+          </div>
+          <div class="field">
+            <label for="newFms">FMS Quantity</label>
+            <input id="newFms" type="number" min="0" value="0" required>
+          </div>
+          <div class="field">
+            <label for="newStatus">Current Status</label>
+            <select id="newStatus" required>
+              <option value="Pending">Pending</option>
+              <option value="Ongoing">Ongoing</option>
+              <option value="Awaiting Closure">Awaiting Closure</option>
+              <option value="Work in Progress">Work in Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="newEngineer">Service Engineer Assigned</label>
+            <input id="newEngineer" type="text" placeholder="Engineer name">
+          </div>
+        </div>
+        <div class="request-form-actions">
+          <span class="form-message" id="newRequestMessage"></span>
+          <button class="secondary-button" id="cancelNewRequest" type="button">Cancel</button>
+          <button class="primary-button" type="submit">Save Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="detail-modal" id="engineerHistoryModal" role="dialog" aria-modal="true" aria-labelledby="engineerHistoryTitle">
+    <div class="detail-window history-window">
+      <div class="detail-head">
+        <div>
+          <h2 id="engineerHistoryTitle">Service Engineer Work History</h2>
+          <p id="engineerHistoryMeta">Project-wise daily worklog</p>
+        </div>
+        <button class="detail-close" id="closeEngineerHistory" type="button" aria-label="Close engineer history">&times;</button>
+      </div>
+      <div class="history-controls">
+        <div class="field">
+          <label for="historyFromDate">From Date</label>
+          <input id="historyFromDate" type="date">
+        </div>
+        <div class="field">
+          <label for="historyToDate">To Date</label>
+          <input id="historyToDate" type="date">
+        </div>
+        <button class="secondary-button" id="downloadEngineerCsv" type="button">Download Excel</button>
+        <button class="secondary-button" id="printEngineerHistory" type="button">Download PDF</button>
+      </div>
+      <div class="history-summary" id="engineerHistorySummary"></div>
+      <div class="detail-body" id="engineerHistoryBody"></div>
+    </div>
+  </div>
+
+  <div class="detail-modal" id="worklogBreakupModal" role="dialog" aria-modal="true" aria-labelledby="worklogBreakupTitle">
+    <div class="detail-window history-window">
+      <div class="detail-head">
+        <div>
+          <h2 id="worklogBreakupTitle">Worklog Daywise Breakup</h2>
+          <p id="worklogBreakupMeta">Completed work request details</p>
+        </div>
+        <button class="detail-close" id="closeWorklogBreakup" type="button" aria-label="Close worklog breakup">&times;</button>
+      </div>
+      <div class="detail-body" id="worklogBreakupBody"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const asOfDate = new Date(2026, 5, 22);
+    const requests = [
+      { id: 1, date: "05.01.2026", client: "KPIL", site: "MEN2", location: "Nagpur", type: "Installation", gps: 20, fms: 40, pending: "5Months", status: "Ongoing", engineer: "Manish, Sudhir" },
+      { id: 2, date: "07.06.2026", client: "KPIL", site: "MUD3", location: "Delhi", type: "Installation", gps: 0, fms: 20, pending: "10 days", status: "Ongoing", engineer: "Shivam" },
+      { id: 3, date: "31.05.2026", client: "KPIL", site: "KWRG", location: "Gurugram", type: "Installation", gps: 3, fms: 20, pending: "1Month", status: "Pending", engineer: "Shivam" },
+      { id: 4, date: "01.06.2026", client: "KPIL", site: "LKCT", location: "Patanchervu", type: "Installation", gps: 4, fms: 0, pending: "2 Weeks", status: "Pending", engineer: "Venkatesh" },
+      { id: 5, date: "01.06.2026", client: "KPIL", site: "WLRG", location: "Gurugram", type: "Installation", gps: 0, fms: 20, pending: "15Days", status: "Pending", engineer: "Tek Chand" },
+      { id: 6, date: "28.05.2026", client: "KPIL", site: "DPNG", location: "Gurugram", type: "Both", gps: 5, fms: 5, pending: "1Month", status: "Pending", engineer: "Tek Chand" },
+      { id: 7, date: "15.04.2026", client: "KPIL", site: "JPSR", location: "Pakur, JH", type: "Both", gps: 6, fms: 0, pending: "2Months", status: "Pending", engineer: "Shabbir" },
+      { id: 8, date: "05.06.2026", client: "KPIL", site: "OCDR", location: "Athagarh, Odisha", type: "Both", gps: 5, fms: 2, pending: "2Weeks", status: "Pending", engineer: "Sunaram" },
+      { id: 9, date: "29.04.2026", client: "KPIL", site: "DWSP", location: "Dhanbad, JH", type: "Troubleshooting", gps: 3, fms: 0, pending: "2Months", status: "Pending", engineer: "Shabbir" },
+      { id: 10, date: "29.04.2026", client: "KPIL", site: "RAOF", location: "Ranchi, JH", type: "Installation", gps: 2, fms: 0, pending: "2Months", status: "Ongoing", engineer: "Shabbir" },
+      { id: 11, date: "16.06.2026", client: "KPIL", site: "OGKR", location: "Koraput, Odisha", type: "Installation", gps: 8, fms: 0, pending: "2 Days", status: "Pending", engineer: "Sunaram" },
+      { id: 12, date: "15.06.2026", client: "KPIL", site: "BADS", location: "Bangalore", type: "Installation", gps: 2, fms: 0, pending: "2 Days", status: "Pending", engineer: "Sajin" },
+      { id: 13, date: "14.06.2026", client: "KPIL", site: "PEN2", location: "Bangalore", type: "Installation", gps: 5, fms: 0, pending: "23Days", status: "Pending", engineer: "Sajin" },
+      { id: 14, date: "15.06.2026", client: "KPIL", site: "BLS1", location: "Bangalore", type: "Installation", gps: 7, fms: 0, pending: "2 Days", status: "Pending", engineer: "Sajin" },
+      { id: 15, date: "15.06.2026", client: "KPIL", site: "NBRL", location: "Bangalore", type: "Installation", gps: 6, fms: 0, pending: "2 Days", status: "Pending", engineer: "Sajin" },
+      { id: 16, date: "15.06.2026", client: "KPIL", site: "VCB2", location: "Bangalore", type: "Installation", gps: 2, fms: 0, pending: "3Days", status: "Pending", engineer: "Sajin" },
+      { id: 17, date: "16.06.2026", client: "KPIL", site: "BEPL", location: "Agra, UP", type: "Troubleshooting", gps: 5, fms: 0, pending: "1 Week", status: "Pending", engineer: "Tek Chand" },
+      { id: 18, date: "16.06.2026", client: "VSEPL", site: "Mulapeta", location: "Mulapeta", type: "Troubleshooting", gps: 15, fms: 0, pending: "1 Week", status: "Pending", engineer: "" }
+    ];
+
+    const sampleCompletedWorkRequests = [
+      {
+        id: "cw-sample-men2",
+        requestId: 1,
+        bu: "Urban",
+        site: "MEN2",
+        requestDate: "2026-06-22",
+        personReached: "2026-06-25",
+        noOfTasks: 23,
+        newInstallation: 13,
+        service: 10,
+        tasksCompleted: 13,
+        personReturned: "2026-06-30",
+        serviceEngineer: "Manish, Sudhir",
+        client: "KPIL",
+        location: "Nagpur",
+        status: "Completed"
+      }
+    ];
+
+    const parseServiceDate = (dateText) => {
+      const [day, month, year] = dateText.split(".").map(Number);
+      return new Date(year, month - 1, day);
+    };
+
+    const ageInDays = (dateText) => {
+      const diff = asOfDate - parseServiceDate(dateText);
+      return Math.max(0, Math.round(diff / 86400000));
+    };
+
+    const locationPoints = {
+      "Agra, UP": { lat: 27.1767, lng: 78.0081 },
+      "Athagarh, Odisha": { lat: 20.5191, lng: 85.6297 },
+      "Bangalore": { lat: 12.9716, lng: 77.5946 },
+      "Delhi": { lat: 28.6139, lng: 77.2090 },
+      "Dhanbad, JH": { lat: 23.7957, lng: 86.4304 },
+      "Gurugram": { lat: 28.4595, lng: 77.0266 },
+      "Koraput, Odisha": { lat: 18.8135, lng: 82.7123 },
+      "Mulapeta": { lat: 18.3163, lng: 84.1660 },
+      "Nagpur": { lat: 21.1458, lng: 79.0882 },
+      "Pakur, JH": { lat: 24.6337, lng: 87.8497 },
+      "Patanchervu": { lat: 17.5333, lng: 78.2645 },
+      "Ranchi, JH": { lat: 23.3441, lng: 85.3096 }
+    };
+
+    let serviceMap;
+    let serviceMapLayer;
+    let engineerStatusMap;
+    let engineerStatusLayer;
+    let mapReady = false;
+    let engineerMapReady = false;
+    const CRM_WORKLOG_ENDPOINT = window.SERVICE_TRACKER_CRM_ENDPOINT
+      || document.querySelector('meta[name="crm-worklog-endpoint"]')?.content
+      || "";
+    let workLogs = loadWorkLogs();
+    let activeSummaryFilter = "all";
+    let savedServiceRequests = loadServiceRequests();
+    let statusOverrides = loadStatusOverrides();
+    let completedDocuments = loadCompletedDocuments();
+    let enrichedRequests = buildRequests();
+    let activeEngineerHistory = "";
+    let worklogEntryMode = "quick";
+
+    const requestStatusOptions = ["Pending", "Ongoing", "Awaiting Closure", "Work in Progress", "Completed"];
+
+    const summaryFilters = {
+      all: {
+        label: "All Active Requests",
+        match: () => true
+      },
+      pending: {
+        label: "Pending Requests",
+        match: (item) => item.status === "Pending"
+      },
+      completed: {
+        label: "Completed Requests",
+        match: (item) => item.status === "Completed"
+      },
+      ongoing: {
+        label: "Ongoing Site Work",
+        match: (item) => item.status === "Ongoing"
+      },
+      workInProgress: {
+        label: "Work in Progress Requests",
+        match: (item) => item.status === "Work in Progress"
+      },
+      over30: {
+        label: "Requests Open Over 30 Days",
+        match: (item) => item.age > 30
+      },
+      priority: {
+        label: "Needs Priority Review",
+        match: (item) => item.priority === "High" || item.age > 30
+      },
+      gps: {
+        label: "Requests Containing GPS Installations",
+        match: (item) => item.gps > 0
+      },
+      fms: {
+        label: "Requests Containing FMS Installations",
+        match: (item) => item.fms > 0
+      }
+    };
+
+    const formatNumber = (value) => new Intl.NumberFormat("en-IN").format(value);
+    const byId = (id) => document.getElementById(id);
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function todayValue() {
+      const date = new Date();
+      const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return offsetDate.toISOString().slice(0, 10);
+    }
+
+    function displayDate(dateText) {
+      if (!dateText) return "";
+      const [year, month, day] = dateText.split("-");
+      return `${day}.${month}.${year}`;
+    }
+
+    function loadWorkLogs() {
+      try {
+        return JSON.parse(localStorage.getItem("serviceTrackerCrmWorkLogs") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveWorkLogs() {
+      localStorage.setItem("serviceTrackerCrmWorkLogs", JSON.stringify(workLogs));
+    }
+
+    function normalizeCrmWorklog(task) {
+      const requestedId = Number(task.serviceId || task.serviceRequestId || task.service_request_id || task.requestId);
+      const matchedService = enrichedRequests.find((item) => item.id === requestedId || item.site === task.site || item.site === task.siteCode);
+      if (!matchedService) return null;
+
+      const date = task.date || task.taskDate || task.task_date || task.serviceDate;
+      if (!date) return null;
+
+      const checkIn = task.checkIn || task.check_in || "-";
+      const checkOut = task.checkOut || task.check_out || "-";
+      return {
+        id: String(task.id || task.taskId || task.task_id || `CRM-${matchedService.id}-${date}`),
+        crmTaskId: String(task.taskId || task.task_id || task.id || "-"),
+        serviceId: matchedService.id,
+        date,
+        engineer: task.engineer || task.serviceEngineer || task.engineer_name || "",
+        status: task.status || task.workStatus || task.work_status || "In progress",
+        workMode: task.workMode || task.work_mode || "Site Work",
+        note: task.note || task.activity || task.workPerformed || task.description || "CRM daily service task",
+        checkIn,
+        checkOut,
+        hours: task.hours || task.totalWorkingHours || calculateWorkingHours(checkIn, checkOut),
+        newInstallation: Number(task.newInstallation || task.new_installation || 0),
+        service: Number(task.serviceCount || task.service_count || 0),
+        pending: task.pending || task.pendingWork || "-",
+        remarks: task.remarks || task.notes || "-",
+        attachments: task.attachments || "-",
+        progress: String(task.progress ?? task.progressPercentage ?? "-").replace(/^(\d+)$/, "$1%"),
+        source: "CRM",
+        createdAt: task.updatedAt || task.updated_at || task.createdAt || `${date}T00:00:00`
+      };
+    }
+
+    async function syncCrmWorklogs() {
+      const status = byId("crmSyncStatus");
+      const selectedDate = byId("worklogDate").value || todayValue();
+
+      if (!CRM_WORKLOG_ENDPOINT) {
+        status.textContent = "CRM endpoint is not configured. Add the CRM daily-service-task API to enable synchronization.";
+        render();
+        return;
+      }
+
+      status.textContent = "Synchronizing daily service tasks from CRM...";
+      byId("syncCrmWorklogs").disabled = true;
+
+      try {
+        const requestUrl = new URL(CRM_WORKLOG_ENDPOINT, window.location.href);
+        requestUrl.searchParams.set("date", selectedDate);
+        const response = await fetch(requestUrl, {
+          method: "GET",
+          credentials: "include",
+          headers: { Accept: "application/json" }
+        });
+        if (!response.ok) throw new Error(`CRM returned ${response.status}`);
+
+        const payload = await response.json();
+        const tasks = Array.isArray(payload) ? payload : (payload.tasks || payload.data || []);
+        const syncedLogs = tasks.map(normalizeCrmWorklog).filter(Boolean);
+        workLogs = [...workLogs.filter((log) => log.date !== selectedDate), ...syncedLogs];
+        saveWorkLogs();
+        status.textContent = `CRM synchronized ${syncedLogs.length} task${syncedLogs.length === 1 ? "" : "s"} for ${displayDate(selectedDate)}.`;
+        render();
+      } catch (error) {
+        status.textContent = `CRM synchronization failed: ${error.message}.`;
+      } finally {
+        byId("syncCrmWorklogs").disabled = false;
+      }
+    }
+
+    function loadServiceRequests() {
+      try {
+        return JSON.parse(localStorage.getItem("serviceTrackerRequests") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveServiceRequests() {
+      localStorage.setItem("serviceTrackerRequests", JSON.stringify(savedServiceRequests));
+    }
+
+    function loadStatusOverrides() {
+      try {
+        return JSON.parse(localStorage.getItem("serviceTrackerStatusOverrides") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveStatusOverrides() {
+      localStorage.setItem("serviceTrackerStatusOverrides", JSON.stringify(statusOverrides));
+    }
+
+    function loadCompletedDocuments() {
+      try {
+        return JSON.parse(localStorage.getItem("completedWorkDocuments") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveCompletedDocuments() {
+      localStorage.setItem("completedWorkDocuments", JSON.stringify(completedDocuments));
+    }
+
+    function buildRequests() {
+      const savedFirst = savedServiceRequests
+        .slice()
+        .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "") || b.id - a.id);
+
+      return [...savedFirst, ...requests].map((request) => ({
+        ...request,
+        status: statusOverrides[request.id] || request.status,
+        plannedDate: request.plannedDate || "",
+        age: ageInDays(request.date),
+        engineerDisplay: request.engineer || "Unassigned"
+      }));
+    }
+
+    function dateInputToDisplay(dateText) {
+      if (!dateText) return "";
+      const [year, month, day] = dateText.split("-");
+      return `${day}.${month}.${year}`;
+    }
+
+    function displayToDateInput(dateText) {
+      if (!dateText) return "";
+      const [day, month, year] = dateText.split(".");
+      return `${year}-${month}-${day}`;
+    }
+
+    function dateInputToDate(dateText) {
+      const [year, month, day] = dateText.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function addDays(date, days) {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function dateToInput(date) {
+      const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return offsetDate.toISOString().slice(0, 10);
+    }
+
+    function clampDateRange(startInput, endInput, filterStart, filterEnd) {
+      const start = filterStart && filterStart > startInput ? filterStart : startInput;
+      const end = filterEnd && filterEnd < endInput ? filterEnd : endInput;
+      return { start, end };
+    }
+
+    function refreshSelect(id, values, firstLabel) {
+      const select = byId(id);
+      const currentValue = select.value;
+      select.innerHTML = `<option value="All">${firstLabel}</option>`;
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      select.value = [...select.options].some((option) => option.value === currentValue) ? currentValue : "All";
+    }
+
+    function refreshDynamicControls() {
+      refreshSelect("statusFilter", uniqueValues("status"), "All statuses");
+      refreshSelect("typeFilter", uniqueValues("type"), "All types");
+      refreshSelect("engineerFilter", engineerNames(), "All engineers");
+      byId("worklogEngineerFilter").innerHTML = `<option value="All">All engineers</option>`;
+      populateWorklogEngineerFilter();
+    }
+
+    function daysBetween(startDate, endDate) {
+      if (!startDate || !endDate) return 0;
+      return Math.max(0, Math.round((dateInputToDate(endDate) - dateInputToDate(startDate)) / 86400000));
+    }
+
+    function completedWorkRequests() {
+      const completedFromTracker = enrichedRequests
+        .filter((item) => item.status === "Completed")
+        .map((item) => {
+          const latestCompletedLog = workLogs
+            .filter((log) => log.serviceId === item.id && log.status === "Completed")
+            .sort((a, b) => b.date.localeCompare(a.date))[0];
+          const personReached = item.plannedDate ? displayToDateInput(item.plannedDate) : displayToDateInput(item.date);
+          const personReturned = latestCompletedLog?.date || todayValue();
+          const tasksCompleted = workLogs.filter((log) => log.serviceId === item.id && log.status === "Completed").length || item.gps + item.fms;
+
+          return {
+            id: `cw-${item.id}`,
+            requestId: item.id,
+            bu: item.bu || "Urban",
+            site: item.site,
+            requestDate: displayToDateInput(item.date),
+            personReached,
+            noOfTasks: item.gps + item.fms,
+            newInstallation: item.gps,
+            service: item.fms,
+            tasksCompleted,
+            personReturned,
+            serviceEngineer: item.engineerDisplay,
+            client: item.client,
+            location: item.location,
+            status: item.status
+          };
+        });
+
+      const sampleIds = new Set(sampleCompletedWorkRequests.map((item) => item.id));
+      return [...sampleCompletedWorkRequests, ...completedFromTracker.filter((item) => !sampleIds.has(item.id))];
+    }
+
+    function completedFilterValues(records, key) {
+      return [...new Set(records.map((record) => record[key]).filter(Boolean))].sort();
+    }
+
+    function refreshCompletedFilters(records) {
+      refreshSelect("completedBuFilter", completedFilterValues(records, "bu"), "All BU");
+      refreshSelect("completedSiteFilter", completedFilterValues(records, "site"), "All sites");
+      refreshSelect("completedEngineerFilter", completedFilterValues(records, "serviceEngineer"), "All engineers");
+    }
+
+    function filteredCompletedRequests() {
+      const records = completedWorkRequests();
+      const search = byId("completedSearch").value.trim().toLowerCase();
+      const bu = byId("completedBuFilter").value;
+      const site = byId("completedSiteFilter").value;
+      const requestDate = byId("completedRequestDateFilter").value;
+      const engineer = byId("completedEngineerFilter").value;
+      const completedDate = byId("completedDateFilter").value;
+
+      return records.filter((record) => {
+        const text = [record.site, record.bu, record.serviceEngineer].join(" ").toLowerCase();
+        return (!search || text.includes(search))
+          && (bu === "All" || record.bu === bu)
+          && (site === "All" || record.site === site)
+          && (!requestDate || record.requestDate === requestDate)
+          && (engineer === "All" || record.serviceEngineer === engineer)
+          && (!completedDate || record.personReturned === completedDate);
+      });
+    }
+
+    function documentActions(recordId, type) {
+      const doc = completedDocuments[recordId]?.[type];
+      return `
+        <div class="document-actions">
+          <input type="file" accept="application/pdf" data-completed-upload="${recordId}" data-doc-type="${type}">
+          ${doc ? `<button class="text-link-button" type="button" data-completed-view="${recordId}" data-doc-type="${type}">View</button>
+          <button class="text-link-button" type="button" data-completed-download="${recordId}" data-doc-type="${type}">Download</button>` : ""}
+        </div>
+      `;
+    }
+
+    function completedWorkRows(records) {
+      return records.map((record) => `
+        <tr>
+          <td>${escapeHtml(record.bu)}</td>
+          <td><strong>${escapeHtml(record.site)}</strong></td>
+          <td>${escapeHtml(record.requestDate)}</td>
+          <td>${escapeHtml(record.personReached)}</td>
+          <td>${record.noOfTasks}</td>
+          <td>${record.newInstallation}</td>
+          <td>${record.service}</td>
+          <td>${record.tasksCompleted}</td>
+          <td>${escapeHtml(record.personReturned)}</td>
+          <td>${daysBetween(record.personReached, record.personReturned)}</td>
+          <td>${documentActions(record.id, "document")}</td>
+          <td>${documentActions(record.id, "estimate")}</td>
+          <td><button class="secondary-button" type="button" data-worklog-breakup="${record.id}">View</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function uniqueValues(key) {
+      return [...new Set(enrichedRequests.map((item) => item[key]))].filter(Boolean).sort();
+    }
+
+    function fillSelect(id, values) {
+      const select = byId(id);
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+    }
+
+    function engineerNames() {
+      const names = new Set();
+      enrichedRequests.forEach((item) => {
+        if (!item.engineer) {
+          names.add("Unassigned");
+          return;
+        }
+        item.engineer.split(",").map((name) => name.trim()).forEach((name) => names.add(name));
+      });
+      return [...names].sort();
+    }
+
+    function assignedEngineerNames() {
+      const names = new Set();
+      enrichedRequests.forEach((item) => {
+        if (!item.engineer) return;
+        item.engineer.split(",").map((name) => name.trim()).forEach((name) => names.add(name));
+      });
+      return [...names].sort();
+    }
+
+    function itemEngineers(item) {
+      return item.engineer ? item.engineer.split(",").map((name) => name.trim()).filter(Boolean) : [];
+    }
+
+    function matchesEngineer(item, engineer) {
+      if (engineer === "All") return true;
+      if (engineer === "Unassigned") return !item.engineer;
+      return item.engineer.split(",").map((name) => name.trim()).includes(engineer);
+    }
+
+    function ageMatches(age, band) {
+      if (band === "All") return true;
+      if (band === "0-7") return age <= 7;
+      if (band === "8-30") return age >= 8 && age <= 30;
+      return age >= 31;
+    }
+
+    function currentFilters() {
+      return {
+        search: byId("searchBox").value.trim().toLowerCase(),
+        status: byId("statusFilter").value,
+        type: byId("typeFilter").value,
+        engineer: byId("engineerFilter").value,
+        age: byId("ageFilter").value
+      };
+    }
+
+    function filteredRequests() {
+      const filters = currentFilters();
+      const summaryMatch = summaryFilters[activeSummaryFilter]?.match || summaryFilters.all.match;
+      return enrichedRequests.filter((item) => {
+        const text = [item.client, item.site, item.location, item.type, item.status, item.engineerDisplay].join(" ").toLowerCase();
+        return (!filters.search || text.includes(filters.search))
+          && (filters.status === "All" || item.status === filters.status)
+          && (filters.type === "All" || item.type === filters.type)
+          && matchesEngineer(item, filters.engineer)
+          && ageMatches(item.age, filters.age)
+          && summaryMatch(item);
+      });
+    }
+
+    function countBy(items, key) {
+      return items.reduce((acc, item) => {
+        const value = item[key] || "Unassigned";
+        acc[value] = (acc[value] || 0) + 1;
+      return acc;
+      }, {});
+    }
+
+    function latestLogFor(serviceId) {
+      return workLogs
+        .filter((log) => log.serviceId === serviceId)
+        .sort((a, b) => `${b.date} ${b.createdAt}`.localeCompare(`${a.date} ${a.createdAt}`))[0];
+    }
+
+    function populateWorklogServices() {
+      const options = byId("worklogServiceOptions");
+      options.innerHTML = enrichedRequests
+        .slice()
+        .sort((a, b) => {
+          if (a.status !== b.status) return a.status === "Ongoing" ? -1 : 1;
+          return a.id - b.id;
+        })
+        .map((item) => {
+          const label = `#${item.id} ${item.site} - ${item.location} (${item.status})`;
+          return `
+            <label class="multi-select-option">
+              <input type="checkbox" value="${item.id}">
+              <span>${escapeHtml(label)}</span>
+            </label>
+          `;
+        }).join("");
+
+      options.querySelectorAll("input").forEach((input) => {
+        input.addEventListener("change", updateWorklogSummary);
+      });
+    }
+
+    function populateDetailedServices() {
+      const select = byId("detailedService");
+      const currentValue = Number(select.value);
+      select.innerHTML = enrichedRequests
+        .slice()
+        .sort((a, b) => {
+          if (a.status !== b.status) return a.status === "Ongoing" ? -1 : 1;
+          return a.id - b.id;
+        })
+        .map((item) => `<option value="${item.id}">#${item.id} ${escapeHtml(item.site)} - ${escapeHtml(item.location)} (${escapeHtml(item.status)})</option>`)
+        .join("");
+
+      if (enrichedRequests.some((item) => item.id === currentValue)) {
+        select.value = String(currentValue);
+      }
+      populateDetailedEngineers();
+    }
+
+    function populateDetailedEngineers() {
+      const serviceId = Number(byId("detailedService").value);
+      const service = enrichedRequests.find((item) => item.id === serviceId);
+      const assigned = service ? itemEngineers(service) : [];
+      const engineers = assigned.length ? assigned : assignedEngineerNames();
+      const currentValue = byId("detailedEngineer").value;
+
+      byId("detailedEngineer").innerHTML = engineers
+        .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+        .join("");
+      if (engineers.includes(currentValue)) byId("detailedEngineer").value = currentValue;
+    }
+
+    function populateWorklogEngineerFilter() {
+      const select = byId("worklogEngineerFilter");
+      assignedEngineerNames().forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    }
+
+    function selectedWorklogServices() {
+      return [...byId("worklogServiceOptions").querySelectorAll("input:checked")].map((input) => Number(input.value));
+    }
+
+    function updateWorklogSummary() {
+      const count = selectedWorklogServices().length;
+      byId("worklogSummary").textContent = count ? `${count} service${count === 1 ? "" : "s"} selected` : "Select services";
+    }
+
+    function setWorklogMode(mode) {
+      worklogEntryMode = mode;
+      const detailed = mode === "detailed";
+      byId("quickWorklogPane").hidden = detailed;
+      byId("detailedWorklogPane").hidden = !detailed;
+      byId("quickModeButton").classList.toggle("active", !detailed);
+      byId("detailedModeButton").classList.toggle("active", detailed);
+      byId("quickModeButton").setAttribute("aria-selected", String(!detailed));
+      byId("detailedModeButton").setAttribute("aria-selected", String(detailed));
+      byId("worklogModeCopy").textContent = detailed
+        ? "Record one engineer's full day, progress, timings, and supporting files"
+        : "Update several service requests with one common activity";
+      byId("saveWorklog").textContent = detailed ? "Save Detailed Entry" : "Save Work Log";
+      byId("worklogMessage").textContent = "";
+    }
+
+    function calculateWorkingHours(checkIn, checkOut) {
+      if (!checkIn || !checkOut) return "-";
+      const [inHour, inMinute] = checkIn.split(":").map(Number);
+      const [outHour, outMinute] = checkOut.split(":").map(Number);
+      const minutes = (outHour * 60 + outMinute) - (inHour * 60 + inMinute);
+      if (minutes < 0) return "-";
+      return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    }
+
+    function clearWorklogForm(message = "") {
+      byId("worklogServiceOptions").querySelectorAll("input").forEach((input) => {
+        input.checked = false;
+      });
+      byId("worklogServices").open = false;
+      byId("worklogStatus").value = "In progress";
+      byId("worklogNote").value = "";
+      byId("worklogDate").value = todayValue();
+      byId("detailedDate").value = todayValue();
+      byId("detailedStatus").value = "In progress";
+      byId("detailedWorkMode").value = "Site Work";
+      byId("detailedCheckIn").value = "";
+      byId("detailedCheckOut").value = "";
+      byId("detailedNewInstallation").value = "0";
+      byId("detailedServiceCount").value = "0";
+      byId("detailedProgress").value = "0";
+      byId("detailedProgressValue").textContent = "0%";
+      byId("detailedActivity").value = "";
+      byId("detailedPending").value = "";
+      byId("detailedRemarks").value = "";
+      byId("detailedAttachments").value = "";
+      byId("worklogMessage").textContent = message;
+      updateWorklogSummary();
+    }
+
+    function saveDailyWorklog() {
+      if (worklogEntryMode === "detailed") {
+        saveDetailedWorklog();
+        return;
+      }
+
+      const serviceIds = selectedWorklogServices();
+      const date = byId("worklogDate").value;
+      const status = byId("worklogStatus").value;
+      const note = byId("worklogNote").value.trim();
+
+      if (!serviceIds.length) {
+        byId("worklogMessage").textContent = "Select at least one service request.";
+        return;
+      }
+
+      if (!date || !note) {
+        byId("worklogMessage").textContent = "Add date and work log.";
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      const newLogs = serviceIds.map((serviceId) => ({
+        id: `${serviceId}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        serviceId,
+        date,
+        status,
+        note,
+        createdAt
+      }));
+
+      workLogs = [...workLogs, ...newLogs];
+      saveWorkLogs();
+      clearWorklogForm(`Saved ${newLogs.length} work log${newLogs.length === 1 ? "" : "s"}.`);
+      byId("worklogDate").value = date;
+      render();
+    }
+
+    function saveDetailedWorklog() {
+      const serviceId = Number(byId("detailedService").value);
+      const date = byId("detailedDate").value;
+      const engineer = byId("detailedEngineer").value;
+      const status = byId("detailedStatus").value;
+      const activity = byId("detailedActivity").value.trim();
+
+      if (!serviceId || !date || !engineer || !activity) {
+        byId("worklogMessage").textContent = "Select a request, date, engineer, and enter the work performed.";
+        return;
+      }
+
+      const checkIn = byId("detailedCheckIn").value;
+      const checkOut = byId("detailedCheckOut").value;
+      const attachmentNames = [...byId("detailedAttachments").files].map((file) => file.name).join(", ");
+      const progress = `${byId("detailedProgress").value}%`;
+      const newLog = {
+        id: `${serviceId}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        serviceId,
+        date,
+        engineer,
+        status,
+        workMode: byId("detailedWorkMode").value,
+        note: activity,
+        checkIn: checkIn || "-",
+        checkOut: checkOut || "-",
+        hours: calculateWorkingHours(checkIn, checkOut),
+        newInstallation: Number(byId("detailedNewInstallation").value) || 0,
+        service: Number(byId("detailedServiceCount").value) || 0,
+        pending: byId("detailedPending").value.trim() || "-",
+        remarks: byId("detailedRemarks").value.trim() || "-",
+        attachments: attachmentNames || "-",
+        progress,
+        createdAt: new Date().toISOString()
+      };
+
+      workLogs = [...workLogs, newLog];
+      saveWorkLogs();
+      clearWorklogForm(`Detailed work log saved for ${engineer}.`);
+      byId("detailedDate").value = date;
+      byId("worklogDate").value = date;
+      render();
+    }
+
+    function renderRecentWorklogs() {
+      const selectedDate = byId("worklogDate").value || todayValue();
+      const selectedEngineer = byId("worklogEngineerFilter").value;
+      const recent = workLogs
+        .filter((log) => log.date === selectedDate && (selectedEngineer === "All" || log.engineer === selectedEngineer))
+        .slice()
+        .sort((a, b) => `${b.date} ${b.createdAt}`.localeCompare(`${a.date} ${a.createdAt}`))
+        .slice(0, 12);
+
+      byId("crmTaskCount").textContent = `${recent.length} task${recent.length === 1 ? "" : "s"}`;
+
+      byId("recentWorklogs").innerHTML = recent.length ? recent.map((log) => {
+        const service = enrichedRequests.find((item) => item.id === log.serviceId);
+        const serviceLabel = service ? `#${service.id} ${service.site} - ${service.location}` : `Service #${log.serviceId}`;
+        return `
+          <div class="worklog-item">
+            <strong>${escapeHtml(serviceLabel)}</strong>
+            <span>${escapeHtml(displayDate(log.date))} - ${escapeHtml(log.status)}${log.engineer ? ` - ${escapeHtml(log.engineer)}` : ""}</span>
+            <span>${escapeHtml(log.note)}</span>
+            ${log.workMode || log.progress ? `<span>${escapeHtml(log.workMode || "")}${log.workMode && log.progress ? " - " : ""}${escapeHtml(log.progress || "")}</span>` : ""}
+            <span class="crm-source-chip">CRM Task ${escapeHtml(log.crmTaskId || log.id)}</span>
+          </div>
+        `;
+      }).join("") : `<div class="empty-state visible">No CRM daily service tasks found for the selected date and engineer.</div>`;
+    }
+
+    function completedBreakupRows(record) {
+      const service = enrichedRequests.find((item) => item.id === record.requestId || item.site === record.site);
+      const logs = service ? workLogs.filter((log) => log.serviceId === service.id) : [];
+      const rows = [];
+
+      for (let cursor = dateInputToDate(record.personReached); dateToInput(cursor) <= record.personReturned; cursor = addDays(cursor, 1)) {
+        const date = dateToInput(cursor);
+        const log = logs
+          .filter((entry) => entry.date === date)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+        rows.push({
+          date,
+          engineer: log?.engineer || record.serviceEngineer,
+          site: record.site,
+          workDone: log?.note || (log ? log.status : "No worklog recorded"),
+          newInstallation: log?.newInstallation || "-",
+          service: log?.service || "-",
+          pending: log?.pending || (log ? "-" : "Worklog missing"),
+          remarks: log?.remarks || "-",
+          attachments: log?.attachments || "-"
+        });
+      }
+
+      return rows;
+    }
+
+    function openCompletedBreakup(recordId) {
+      const record = completedWorkRequests().find((item) => item.id === recordId);
+      if (!record) return;
+
+      const rows = completedBreakupRows(record);
+      byId("worklogBreakupTitle").textContent = `${record.site} - Worklog Daywise Breakup`;
+      byId("worklogBreakupMeta").textContent = `${record.serviceEngineer} | ${record.personReached} -> ${record.personReturned}`;
+      byId("worklogBreakupBody").innerHTML = `
+        <div class="history-table-wrap">
+          <table class="breakup-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Service Engineer Name</th>
+                <th>Site Name</th>
+                <th>Work Done</th>
+                <th>New Installation Count</th>
+                <th>Service Count</th>
+                <th>Pending Work</th>
+                <th>Remarks</th>
+                <th>Uploaded Photos / Documents</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((row) => `
+                <tr class="${row.pending === "Worklog missing" ? "missing-row" : ""}">
+                  <td>${escapeHtml(row.date)}</td>
+                  <td>${escapeHtml(row.engineer)}</td>
+                  <td>${escapeHtml(row.site)}</td>
+                  <td>${escapeHtml(row.workDone)}</td>
+                  <td>${escapeHtml(row.newInstallation)}</td>
+                  <td>${escapeHtml(row.service)}</td>
+                  <td>${escapeHtml(row.pending)}</td>
+                  <td>${escapeHtml(row.remarks)}</td>
+                  <td>${escapeHtml(row.attachments)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+      byId("worklogBreakupModal").classList.add("open");
+    }
+
+    function closeCompletedBreakup() {
+      byId("worklogBreakupModal").classList.remove("open");
+    }
+
+    function renderCompletedWorkRequests() {
+      const allRecords = completedWorkRequests();
+      refreshCompletedFilters(allRecords);
+      const records = filteredCompletedRequests();
+
+      byId("completedWorkBody").innerHTML = completedWorkRows(records);
+
+      byId("completedResultCount").textContent = `${records.length} record${records.length === 1 ? "" : "s"}`;
+      byId("completedEmptyState").classList.toggle("visible", records.length === 0);
+    }
+
+    function renderCompletedSummaryDetail() {
+      const records = completedWorkRequests();
+      byId("summaryDetailTitle").textContent = "Completed Work Requests";
+      byId("summaryDetailMeta").textContent = `${records.length} completed record${records.length === 1 ? "" : "s"}`;
+      byId("summaryDetailBody").innerHTML = records.length ? `
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>BU</th>
+                <th>Site</th>
+                <th>Request Date</th>
+                <th>Person Reached</th>
+                <th>No. of Tasks</th>
+                <th>New Installation</th>
+                <th>Service</th>
+                <th>Tasks Completed</th>
+                <th>Person Returned</th>
+                <th>Days in Site</th>
+                <th>Site Visit Document</th>
+                <th>Site Visit Estimate</th>
+                <th>Worklog Daywise Breakup</th>
+              </tr>
+            </thead>
+            <tbody>${completedWorkRows(records)}</tbody>
+          </table>
+        </div>
+      ` : `<div class="detail-empty">No completed work requests found.</div>`;
+    }
+
+    function ongoingWorkRows(items) {
+      return items.map((item) => `
+        <tr>
+          <td>${item.id}</td>
+          <td><strong>${escapeHtml(item.site)}</strong></td>
+          <td>${escapeHtml(item.client)}</td>
+          <td>${escapeHtml(item.location)}</td>
+          <td>${escapeHtml(item.date)}</td>
+          <td>${item.age} days</td>
+          <td>${escapeHtml(item.type)}</td>
+          <td>${item.gps}</td>
+          <td>${item.fms}</td>
+          <td>${escapeHtml(item.engineerDisplay)}</td>
+          <td><button class="secondary-button" type="button" data-ongoing-breakup="${item.id}">View</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderOngoingSummaryDetail(items) {
+      byId("summaryDetailTitle").textContent = "Ongoing Site Work";
+      byId("summaryDetailMeta").textContent = `${items.length} ongoing site work record${items.length === 1 ? "" : "s"}`;
+      byId("summaryDetailBody").innerHTML = items.length ? `
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Sl.No</th>
+                <th>Site</th>
+                <th>Client</th>
+                <th>Location</th>
+                <th>Request Date</th>
+                <th>Open Days</th>
+                <th>Type</th>
+                <th>GPS</th>
+                <th>FMS</th>
+                <th>Service Engineer</th>
+                <th>Worklog Daywise Breakup</th>
+              </tr>
+            </thead>
+            <tbody>${ongoingWorkRows(items)}</tbody>
+          </table>
+        </div>
+      ` : `<div class="detail-empty">No ongoing site work found.</div>`;
+    }
+
+    function ongoingBreakupRows(service) {
+      const logs = workLogs.filter((log) => log.serviceId === service.id);
+      const rows = [];
+      const start = displayToDateInput(service.date);
+      const end = todayValue();
+
+      for (let cursor = dateInputToDate(start); dateToInput(cursor) <= end; cursor = addDays(cursor, 1)) {
+        const date = dateToInput(cursor);
+        const log = logs
+          .filter((entry) => entry.date === date)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+        rows.push({
+          date,
+          engineer: log?.engineer || service.engineerDisplay,
+          site: service.site,
+          workDone: log?.note || (log ? log.status : "No worklog recorded"),
+          newInstallation: log?.newInstallation || "-",
+          service: log?.service || "-",
+          pending: log?.pending || (log ? "-" : "Worklog missing"),
+          remarks: log?.remarks || "-",
+          attachments: log?.attachments || "-"
+        });
+      }
+
+      return rows;
+    }
+
+    function openOngoingBreakup(serviceId) {
+      const service = enrichedRequests.find((item) => item.id === serviceId);
+      if (!service) return;
+
+      const rows = ongoingBreakupRows(service);
+      byId("worklogBreakupTitle").textContent = `${service.site} - Ongoing Worklog Breakup`;
+      byId("worklogBreakupMeta").textContent = `${service.engineerDisplay} | ${service.date} -> Present`;
+      byId("worklogBreakupBody").innerHTML = `
+        <div class="history-table-wrap">
+          <table class="breakup-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Service Engineer Name</th>
+                <th>Site Name</th>
+                <th>Work Done</th>
+                <th>New Installation Count</th>
+                <th>Service Count</th>
+                <th>Pending Work</th>
+                <th>Remarks</th>
+                <th>Uploaded Photos / Documents</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((row) => `
+                <tr class="${row.pending === "Worklog missing" ? "missing-row" : ""}">
+                  <td>${escapeHtml(row.date)}</td>
+                  <td>${escapeHtml(row.engineer)}</td>
+                  <td>${escapeHtml(row.site)}</td>
+                  <td>${escapeHtml(row.workDone)}</td>
+                  <td>${escapeHtml(row.newInstallation)}</td>
+                  <td>${escapeHtml(row.service)}</td>
+                  <td>${escapeHtml(row.pending)}</td>
+                  <td>${escapeHtml(row.remarks)}</td>
+                  <td>${escapeHtml(row.attachments)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+      byId("worklogBreakupModal").classList.add("open");
+    }
+
+    function handleCompletedDocumentUpload(input) {
+      const file = input.files?.[0];
+      const recordId = input.dataset.completedUpload;
+      const type = input.dataset.docType;
+      if (!file || !recordId || !type) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        completedDocuments[recordId] = completedDocuments[recordId] || {};
+        completedDocuments[recordId][type] = {
+          name: file.name,
+          data: reader.result
+        };
+        saveCompletedDocuments();
+        renderCompletedWorkRequests();
+        if (activeSummaryFilter === "completed" && byId("summaryDetailModal").classList.contains("open")) {
+          renderCompletedSummaryDetail();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openCompletedDocument(recordId, type, download = false) {
+      const doc = completedDocuments[recordId]?.[type];
+      if (!doc) return;
+
+      const link = document.createElement("a");
+      link.href = doc.data;
+      link.target = "_blank";
+      link.download = download ? doc.name : "";
+      link.click();
+    }
+
+    function renderSummary(items) {
+      byId("totalRequests").textContent = formatNumber(enrichedRequests.length);
+      byId("pendingCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.pending.match).length);
+      byId("completedRequestsCount").textContent = formatNumber(completedWorkRequests().length);
+      byId("ongoingCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.ongoing.match).length);
+      byId("workInProgressCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.workInProgress.match).length);
+      byId("overdueCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.over30.match).length);
+      byId("priorityCount").textContent = formatNumber(enrichedRequests.filter(summaryFilters.priority.match).length);
+      byId("gpsTotal").textContent = formatNumber(enrichedRequests.reduce((sum, item) => sum + item.gps, 0));
+      byId("fmsTotal").textContent = formatNumber(enrichedRequests.reduce((sum, item) => sum + item.fms, 0));
+    }
+
+    function renderSummaryFilterState() {
+      document.querySelectorAll("[data-summary-filter]").forEach((card) => {
+        const isActive = card.dataset.summaryFilter === activeSummaryFilter;
+        card.classList.toggle("active", isActive);
+        card.setAttribute("aria-pressed", String(isActive));
+      });
+
+      byId("activeFilterLabel").textContent = `Showing: ${summaryFilters[activeSummaryFilter].label}`;
+      byId("clearSummaryFilter").hidden = activeSummaryFilter === "all";
+    }
+
+    function setSummaryFilter(filterName) {
+      const wasActive = activeSummaryFilter === filterName;
+      activeSummaryFilter = activeSummaryFilter === filterName ? "all" : filterName;
+      render();
+      if (!wasActive) {
+        openSummaryDetail();
+      }
+    }
+
+    function detailRows(items) {
+      return items.map((item) => `
+        <tr>
+          <td>${item.id}</td>
+          <td>${escapeHtml(item.date)}</td>
+          <td>${escapeHtml(item.plannedDate || "-")}</td>
+          <td>${item.age} days</td>
+          <td>${escapeHtml(item.client)}</td>
+          <td><strong>${escapeHtml(item.site)}</strong></td>
+          <td>${escapeHtml(item.location)}</td>
+          <td>${escapeHtml(item.type)}</td>
+          <td>${item.gps}</td>
+          <td>${item.fms}</td>
+          <td>
+            <select class="detail-status-select" data-request-status="${item.id}" aria-label="Update status for ${escapeHtml(item.site)}">
+              ${requestStatusOptions.map((status) => `<option value="${escapeHtml(status)}" ${item.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
+            </select>
+          </td>
+          <td>${escapeHtml(item.engineerDisplay)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSummaryDetail(items, label) {
+      if (activeSummaryFilter === "completed") {
+        renderCompletedSummaryDetail();
+        return;
+      }
+
+      if (activeSummaryFilter === "ongoing") {
+        renderOngoingSummaryDetail(items);
+        return;
+      }
+
+      byId("summaryDetailTitle").textContent = label;
+      byId("summaryDetailMeta").textContent = `${items.length} matching record${items.length === 1 ? "" : "s"}`;
+
+      byId("summaryDetailBody").innerHTML = items.length ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Sl.No</th>
+              <th>Requested Date</th>
+              <th>Planned Date</th>
+              <th>Age</th>
+              <th>Client</th>
+              <th>Site</th>
+              <th>Location</th>
+              <th>Type</th>
+              <th>GPS</th>
+              <th>FMS</th>
+              <th>Status</th>
+              <th>Engineer</th>
+            </tr>
+          </thead>
+          <tbody>${detailRows(items)}</tbody>
+        </table>
+      ` : `<div class="detail-empty">No matching service requests found.</div>`;
+    }
+
+    function openSummaryDetail() {
+      const items = filteredRequests();
+      renderSummaryDetail(items, summaryFilters[activeSummaryFilter].label);
+      byId("summaryDetailModal").classList.add("open");
+    }
+
+    function closeSummaryDetail() {
+      byId("summaryDetailModal").classList.remove("open");
+    }
+
+    function updateRequestStatus(requestId, status) {
+      statusOverrides[requestId] = status;
+      savedServiceRequests = savedServiceRequests.map((request) => (
+        request.id === requestId ? { ...request, status } : request
+      ));
+      saveStatusOverrides();
+      saveServiceRequests();
+      enrichedRequests = buildRequests();
+      refreshDynamicControls();
+      render();
+
+      if (byId("summaryDetailModal").classList.contains("open")) {
+        renderSummaryDetail(filteredRequests(), summaryFilters[activeSummaryFilter].label);
+      }
+    }
+
+    function openNewRequestModal() {
+      byId("newRequestForm").reset();
+      byId("newRequestDate").value = todayValue();
+      byId("newPlannedDate").value = todayValue();
+      byId("newClient").value = "KPIL";
+      byId("newGps").value = "0";
+      byId("newFms").value = "0";
+      byId("newRequestMessage").textContent = "";
+      byId("newRequestModal").classList.add("open");
+    }
+
+    function closeNewRequestModal() {
+      byId("newRequestModal").classList.remove("open");
+    }
+
+    function nextRequestId() {
+      return Math.max(0, ...enrichedRequests.map((item) => item.id)) + 1;
+    }
+
+    function addServiceRequest(event) {
+      event.preventDefault();
+      const requestDate = byId("newRequestDate").value;
+      const plannedDate = byId("newPlannedDate").value;
+      const client = byId("newClient").value.trim();
+      const site = byId("newSite").value.trim();
+      const location = byId("newLocation").value.trim();
+      const type = byId("newType").value;
+      const gps = Number(byId("newGps").value || 0);
+      const fms = Number(byId("newFms").value || 0);
+      const status = byId("newStatus").value;
+      const engineer = byId("newEngineer").value.trim();
+
+      if (!requestDate || !plannedDate || !client || !site || !location) {
+        byId("newRequestMessage").textContent = "Fill all required fields.";
+        return;
+      }
+
+      const newRequest = {
+        id: nextRequestId(),
+        date: dateInputToDisplay(requestDate),
+        plannedDate: dateInputToDisplay(plannedDate),
+        client,
+        site,
+        location,
+        type,
+        gps,
+        fms,
+        pending: "0 Days",
+        status,
+        engineer,
+        createdAt: new Date().toISOString()
+      };
+
+      savedServiceRequests = [...savedServiceRequests, newRequest];
+      saveServiceRequests();
+      enrichedRequests = buildRequests();
+      refreshDynamicControls();
+      activeSummaryFilter = "all";
+      closeNewRequestModal();
+      render();
+    }
+
+    function renderBars(containerId, counts, classForLabel = () => "") {
+      const container = byId(containerId);
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const max = Math.max(1, ...entries.map(([, count]) => count));
+      container.innerHTML = entries.map(([label, count]) => {
+        const width = Math.round((count / max) * 100);
+        return `
+          <div class="bar-row">
+            <strong>${label}</strong>
+            <div class="bar-track"><div class="bar-fill ${classForLabel(label)}" style="--value: ${width}%"></div></div>
+            <span>${count}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderCompactList(containerId, counts) {
+      const container = byId(containerId);
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      const max = Math.max(1, ...entries.map(([, count]) => count));
+      container.innerHTML = entries.map(([label, count]) => {
+        const width = Math.round((count / max) * 100);
+        return `
+          <div class="compact-row">
+            <strong>${label}</strong>
+            <div class="bar-track"><div class="bar-fill" style="--value: ${width}%"></div></div>
+            <span>${count}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderEngineerLoad(items) {
+      const counts = {};
+      items.forEach((item) => {
+        const names = item.engineer ? item.engineer.split(",").map((name) => name.trim()) : ["Unassigned"];
+        names.forEach((name) => {
+          counts[name] = (counts[name] || 0) + 1;
+        });
+      });
+
+      byId("engineerList").innerHTML = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([name, count]) => `
+          <div class="engineer-item">
+            <div class="engineer-name">${name}</div>
+            <div class="engineer-meta">${count} assigned request${count === 1 ? "" : "s"}</div>
+          </div>
+        `).join("");
+    }
+
+    function mapStatusFor(items) {
+      if (items.some((item) => item.age <= 7)) {
+        return { label: "New request", className: "new", color: "#f2c94c" };
+      }
+
+      if (items.some((item) => item.status === "Ongoing")) {
+        return { label: "Ongoing", className: "ongoing", color: "#18a36f" };
+      }
+
+      return { label: "Pending", className: "pending", color: "#d33f4f" };
+    }
+
+    function groupedMapLocations(items) {
+      return Object.values(items.reduce((acc, item) => {
+        const point = locationPoints[item.location] || { lat: 22.8, lng: 80.6 };
+
+        if (!acc[item.location]) {
+          acc[item.location] = {
+            location: item.location,
+            point,
+            items: []
+          };
+        }
+
+        acc[item.location].items.push(item);
+        return acc;
+      }, {}));
+    }
+
+    function initServiceMap() {
+      const stage = byId("mapStage");
+      if (!window.L) {
+        stage.classList.add("map-unavailable");
+        return false;
+      }
+
+      if (serviceMap) return true;
+
+      serviceMap = L.map("serviceMap", {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([22.8, 80.6], 5);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(serviceMap);
+
+      serviceMapLayer = L.layerGroup().addTo(serviceMap);
+      mapReady = true;
+      setTimeout(() => serviceMap.invalidateSize(), 0);
+      return true;
+    }
+
+    function initEngineerStatusMap() {
+      const stage = byId("engineerMapStage");
+      if (!window.L) {
+        stage.classList.add("map-unavailable");
+        return false;
+      }
+
+      if (engineerStatusMap) return true;
+
+      engineerStatusMap = L.map("engineerStatusMap", {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([22.8, 80.6], 5);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(engineerStatusMap);
+
+      engineerStatusLayer = L.layerGroup().addTo(engineerStatusMap);
+      engineerMapReady = true;
+      setTimeout(() => engineerStatusMap.invalidateSize(), 0);
+      return true;
+    }
+
+    function markerIcon(status, count) {
+      return L.divIcon({
+        className: "",
+        html: `<div class="service-map-pin ${status.className}"><span>${count}</span></div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -28]
+      });
+    }
+
+    function engineerMarkerIcon(status, name) {
+      return L.divIcon({
+        className: "",
+        html: `<div class="engineer-map-pin ${status === "Working" ? "working" : "no-work"}">${escapeHtml(name)}</div>`,
+        iconSize: null,
+        iconAnchor: [46, 15],
+        popupAnchor: [0, -18]
+      });
+    }
+
+    function renderMap(items) {
+      const hasMap = initServiceMap();
+      const locations = groupedMapLocations(items).map((group) => ({
+        ...group,
+        status: mapStatusFor(group.items),
+        sites: group.items.map((item) => item.site).join(", ")
+      })).sort((a, b) => b.items.length - a.items.length || a.location.localeCompare(b.location));
+
+      if (hasMap && mapReady) {
+        serviceMapLayer.clearLayers();
+        const bounds = [];
+
+        locations.forEach((group) => {
+          const latLng = [group.point.lat, group.point.lng];
+          bounds.push(latLng);
+
+          L.marker(latLng, {
+            icon: markerIcon(group.status, group.items.length),
+            title: `${group.location}: ${group.status.label}`
+          })
+            .bindPopup(`
+              <strong>${group.location}</strong><br>
+              ${group.status.label}<br>
+              ${group.items.length} request${group.items.length === 1 ? "" : "s"}<br>
+              Sites: ${group.sites}
+            `)
+            .addTo(serviceMapLayer);
+        });
+
+        if (bounds.length) {
+          serviceMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 6 });
+        } else {
+          serviceMap.setView([22.8, 80.6], 5);
+        }
+      }
+
+      byId("mapLocationList").innerHTML = locations.length ? locations.map((group) => `
+        <div class="map-list-item">
+          <span class="map-status-dot" style="--dot: ${group.status.color}"></span>
+          <div class="map-place">
+            <strong>${group.location}</strong>
+            <span>${group.status.label} - ${group.sites}</span>
+          </div>
+          <span class="map-count">${group.items.length}</span>
+        </div>
+      `).join("") : `<div class="empty-state visible">No mapped locations match the selected filters.</div>`;
+    }
+
+    function engineerBasePoint(engineer) {
+      const locationCounts = {};
+      enrichedRequests.forEach((item) => {
+        if (!itemEngineers(item).includes(engineer)) return;
+        locationCounts[item.location] = (locationCounts[item.location] || 0) + 1;
+      });
+
+      const [location] = Object.entries(locationCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || [];
+      return {
+        location: location || "India",
+        point: locationPoints[location] || { lat: 22.8, lng: 80.6 }
+      };
+    }
+
+    function engineerStatusRows() {
+      const selectedDate = byId("worklogDate").value || todayValue();
+      const selectedEngineer = byId("worklogEngineerFilter").value;
+      const engineers = assignedEngineerNames().filter((name) => selectedEngineer === "All" || name === selectedEngineer);
+
+      return engineers.map((engineer, index) => {
+        const dailyLogs = workLogs
+          .filter((log) => log.date === selectedDate)
+          .map((log) => ({
+            log,
+            service: enrichedRequests.find((item) => item.id === log.serviceId)
+          }))
+          .filter(({ log, service }) => service && (log.engineer ? log.engineer === engineer : itemEngineers(service).includes(engineer)));
+
+        if (dailyLogs.length) {
+          const current = dailyLogs.sort((a, b) => b.log.createdAt.localeCompare(a.log.createdAt))[0];
+          const point = locationPoints[current.service.location];
+          return {
+            engineer,
+            status: "Working",
+            color: "#18a36f",
+            date: selectedDate,
+            siteLocation: `${current.service.site} - ${current.service.location}`,
+            point,
+            offsetIndex: index
+          };
+        }
+
+        const base = engineerBasePoint(engineer);
+        return {
+          engineer,
+          status: "No Work",
+          color: "#d33f4f",
+          date: selectedDate,
+          siteLocation: base.location === "India" ? "No assigned site" : `Base near ${base.location}`,
+          point: base.point,
+          offsetIndex: index
+        };
+      });
+    }
+
+    function offsetPoint(point, index) {
+      const offset = ((index % 5) - 2) * 0.08;
+      return [point.lat + offset, point.lng + offset];
+    }
+
+    function projectCompletionDate(service) {
+      const completedLog = workLogs
+        .filter((log) => log.serviceId === service.id && log.status === "Completed")
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+
+      if (completedLog) return completedLog.date;
+      if (service.status === "Completed") return todayValue();
+      return todayValue();
+    }
+
+    function workStatusLabel(log, service, dateInput) {
+      if (!log) return "No Work";
+      if (log.status === "Completed" || service.status === "Completed") return "Completed";
+      if (log.status === "Travel") return "Travel";
+      if (log.status === "On Leave") return "On Leave";
+      return "Working";
+    }
+
+    function engineerProjectHistory(engineer, fromDate = "", toDate = "") {
+      return enrichedRequests
+        .filter((service) => itemEngineers(service).includes(engineer))
+        .map((service) => {
+          const assignedDate = displayToDateInput(service.date);
+          const completionDate = projectCompletionDate(service);
+          const range = clampDateRange(assignedDate, completionDate, fromDate, toDate);
+          const logs = workLogs.filter((log) => log.serviceId === service.id && (!log.engineer || log.engineer === engineer));
+          const days = [];
+
+          if (range.start <= range.end) {
+            for (let cursor = dateInputToDate(range.start); dateToInput(cursor) <= range.end; cursor = addDays(cursor, 1)) {
+              const date = dateToInput(cursor);
+              const log = logs
+                .filter((entry) => entry.date === date)
+                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+              const status = workStatusLabel(log, service, date);
+
+              days.push({
+                date,
+                project: service.site,
+                client: service.client,
+                location: service.location,
+                status,
+                checkIn: log?.checkIn || "-",
+                checkOut: log?.checkOut || "-",
+                hours: log?.hours || "-",
+                activity: log?.note || (log ? log.status : "Missing worklog"),
+                remarks: log?.remarks || "-",
+                attachments: log?.attachments || "-",
+                progress: log?.progress || (status === "Completed" ? "100%" : "-"),
+                missing: !log
+              });
+            }
+          }
+
+          return {
+            service,
+            assignedDate,
+            completionDate,
+            days
+          };
+        });
+    }
+
+    function engineerHistorySummary(projects) {
+      const allDays = projects.flatMap((project) => project.days);
+      const workingDays = allDays.filter((day) => day.status === "Working" || day.status === "Completed").length;
+      const noWorkDays = allDays.filter((day) => day.status === "No Work").length;
+      const travelDays = allDays.filter((day) => day.status === "Travel").length;
+      const completedProjects = projects.filter((project) => project.service.status === "Completed" || project.days.some((day) => day.status === "Completed")).length;
+      const completion = projects.length ? Math.round((completedProjects / projects.length) * 100) : 0;
+
+      return {
+        totalProjects: projects.length,
+        workingDays,
+        noWorkDays,
+        travelDays,
+        completedProjects,
+        completion
+      };
+    }
+
+    function renderHistorySummary(summary) {
+      byId("engineerHistorySummary").innerHTML = `
+        <div class="history-metric"><strong>${summary.totalProjects}</strong><span>Total Projects</span></div>
+        <div class="history-metric"><strong>${summary.workingDays}</strong><span>Working Days</span></div>
+        <div class="history-metric"><strong>${summary.noWorkDays}</strong><span>No-Work Days</span></div>
+        <div class="history-metric"><strong>${summary.travelDays}</strong><span>Travel Days</span></div>
+        <div class="history-metric"><strong>${summary.completedProjects}</strong><span>Completed Projects</span></div>
+        <div class="history-metric"><strong>${summary.completion}%</strong><span>Completion</span></div>
+      `;
+    }
+
+    function renderEngineerHistory() {
+      if (!activeEngineerHistory) return;
+
+      const fromDate = byId("historyFromDate").value;
+      const toDate = byId("historyToDate").value;
+      const projects = engineerProjectHistory(activeEngineerHistory, fromDate, toDate);
+      const summary = engineerHistorySummary(projects);
+
+      byId("engineerHistoryTitle").textContent = `${activeEngineerHistory} - Work History`;
+      byId("engineerHistoryMeta").textContent = `${summary.totalProjects} project${summary.totalProjects === 1 ? "" : "s"} assigned`;
+      renderHistorySummary(summary);
+
+      byId("engineerHistoryBody").innerHTML = projects.length ? projects.map((project, index) => {
+        const status = project.service.status;
+        const rows = project.days.map((day) => `
+          <tr class="${day.status === "No Work" ? "no-work-row" : ""} ${day.missing ? "missing-row" : ""}">
+            <td>${escapeHtml(displayDate(day.date))}</td>
+            <td>${escapeHtml(day.project)}</td>
+            <td>${escapeHtml(day.client)}</td>
+            <td>${escapeHtml(day.location)}</td>
+            <td>${escapeHtml(day.status)}</td>
+            <td>${escapeHtml(day.checkIn)}</td>
+            <td>${escapeHtml(day.checkOut)}</td>
+            <td>${escapeHtml(day.hours)}</td>
+            <td>${escapeHtml(day.activity)}</td>
+            <td>${escapeHtml(day.remarks)}</td>
+            <td>${escapeHtml(day.attachments)}</td>
+            <td>${escapeHtml(day.progress)}</td>
+          </tr>
+        `).join("");
+
+        return `
+          <details class="project-section" ${index === 0 ? "open" : ""}>
+            <summary>
+              <div>
+                <strong>${escapeHtml(project.service.site)} - ${escapeHtml(project.service.client)}</strong>
+                <span>${escapeHtml(project.service.location)} | ${escapeHtml(displayDate(project.assignedDate))} -> ${escapeHtml(displayDate(project.completionDate))}</span>
+              </div>
+              <span>${escapeHtml(status)}</span>
+            </summary>
+            <div class="history-table-wrap">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Project / Site</th>
+                    <th>Client</th>
+                    <th>Location</th>
+                    <th>Work Status</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Total Hours</th>
+                    <th>Activity</th>
+                    <th>Remarks</th>
+                    <th>Photos / Attachments</th>
+                    <th>Progress</th>
+                  </tr>
+                </thead>
+                <tbody>${rows || `<tr><td colspan="12">No records in selected date range.</td></tr>`}</tbody>
+              </table>
+            </div>
+          </details>
+        `;
+      }).join("") : `<div class="detail-empty">No project history found for this engineer.</div>`;
+    }
+
+    function openEngineerHistory(engineer) {
+      activeEngineerHistory = engineer;
+      const projects = engineerProjectHistory(engineer);
+      const firstAssigned = projects.map((project) => project.assignedDate).sort()[0] || todayValue();
+      byId("historyFromDate").value = firstAssigned;
+      byId("historyToDate").value = todayValue();
+      renderEngineerHistory();
+      byId("engineerHistoryModal").classList.add("open");
+    }
+
+    function closeEngineerHistory() {
+      byId("engineerHistoryModal").classList.remove("open");
+    }
+
+    function engineerHistoryCsvRows() {
+      const projects = engineerProjectHistory(activeEngineerHistory, byId("historyFromDate").value, byId("historyToDate").value);
+      return projects.flatMap((project) => project.days.map((day) => [
+        activeEngineerHistory,
+        displayDate(day.date),
+        day.project,
+        day.client,
+        day.location,
+        day.status,
+        day.checkIn,
+        day.checkOut,
+        day.hours,
+        day.activity,
+        day.remarks,
+        day.attachments,
+        day.progress
+      ]));
+    }
+
+    function downloadEngineerHistoryCsv() {
+      const headers = ["Engineer", "Date", "Project / Site", "Client", "Location", "Work Status", "Check-in", "Check-out", "Total Working Hours", "Activity", "Remarks", "Attachments", "Progress"];
+      const rows = [headers, ...engineerHistoryCsvRows()];
+      const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${activeEngineerHistory || "engineer"}-work-history.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function renderEngineerStatusMap() {
+      const hasMap = initEngineerStatusMap();
+      const rows = engineerStatusRows();
+
+      if (hasMap && engineerMapReady) {
+        engineerStatusLayer.clearLayers();
+        const bounds = [];
+
+        rows.forEach((row) => {
+          const latLng = offsetPoint(row.point, row.offsetIndex);
+          bounds.push(latLng);
+
+          L.marker(latLng, {
+            icon: engineerMarkerIcon(row.status, row.engineer),
+            title: `${row.engineer}: ${row.status}`
+          })
+            .bindPopup(`
+              <strong>${escapeHtml(row.engineer)}</strong><br>
+              Current Status: ${escapeHtml(row.status)}<br>
+              Date: ${escapeHtml(displayDate(row.date))}<br>
+              Assigned Site/Location: ${escapeHtml(row.siteLocation)}
+            `)
+            .on("click", () => openEngineerHistory(row.engineer))
+            .addTo(engineerStatusLayer);
+        });
+
+        if (bounds.length) {
+          engineerStatusMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 6 });
+        } else {
+          engineerStatusMap.setView([22.8, 80.6], 5);
+        }
+      }
+
+      byId("engineerStatusList").innerHTML = rows.length ? rows.map((row) => `
+        <div class="map-list-item">
+          <span class="map-status-dot" style="--dot: ${row.color}"></span>
+          <div class="map-place">
+            <strong>${escapeHtml(row.engineer)}</strong>
+            <span>${escapeHtml(row.status)} - ${escapeHtml(displayDate(row.date))} - ${escapeHtml(row.siteLocation)}</span>
+          </div>
+          <span class="map-count">${row.status === "Working" ? "Work" : "No Work"}</span>
+        </div>
+      `).join("") : `<div class="empty-state visible">No engineer matches the selected filter.</div>`;
+    }
+
+    function typeBadge(type) {
+      return type.toLowerCase() === "both" ? "both" : type.toLowerCase();
+    }
+
+    function ageClass(age) {
+      if (age > 30) return "high";
+      if (age > 7) return "mid";
+      return "";
+    }
+
+    function renderTable(items) {
+      byId("trackerBody").innerHTML = items.map((item) => {
+        const latestLog = latestLogFor(item.id);
+        const latestLogHtml = latestLog
+          ? `<div class="latest-log"><strong>${escapeHtml(displayDate(latestLog.date))} - ${escapeHtml(latestLog.status)}</strong>${escapeHtml(latestLog.note)}</div>`
+          : `<span class="latest-log">No work log</span>`;
+
+        return `
+          <tr>
+            <td>${item.id}</td>
+            <td>${escapeHtml(item.date)}</td>
+            <td>${escapeHtml(item.plannedDate || "-")}</td>
+            <td><span class="age-chip ${ageClass(item.age)}">${item.age} days</span></td>
+            <td>${escapeHtml(item.client)}</td>
+            <td><strong>${escapeHtml(item.site)}</strong></td>
+            <td>${escapeHtml(item.location)}</td>
+            <td><span class="badge ${typeBadge(item.type)}">${escapeHtml(item.type)}</span></td>
+            <td>${item.gps}</td>
+            <td>${item.fms}</td>
+            <td>${escapeHtml(item.pending)}</td>
+            <td><span class="badge ${item.status.toLowerCase()}">${escapeHtml(item.status)}</span></td>
+            <td>${escapeHtml(item.engineerDisplay)}</td>
+            <td>${latestLogHtml}</td>
+          </tr>
+        `;
+      }).join("");
+
+      byId("resultCount").textContent = `${items.length} record${items.length === 1 ? "" : "s"}`;
+      byId("emptyState").classList.toggle("visible", items.length === 0);
+      byId("emptyState").textContent = items.length === 0 ? "No matching service requests found." : "";
+    }
+
+    function render() {
+      const items = filteredRequests();
+      renderSummary(items);
+      renderSummaryFilterState();
+      renderMap(items);
+      renderEngineerStatusMap();
+      renderBars("statusBars", countBy(items, "status"), (label) => label === "Pending" ? "pending" : "");
+      renderEngineerLoad(items);
+      renderCompactList("typeList", countBy(items, "type"));
+      renderCompactList("locationList", countBy(items, "location"));
+      renderTable(items);
+      renderRecentWorklogs();
+      renderCompletedWorkRequests();
+    }
+
+    refreshDynamicControls();
+    byId("worklogDate").value = todayValue();
+
+    ["searchBox", "statusFilter", "typeFilter", "engineerFilter", "ageFilter"].forEach((id) => {
+      byId(id).addEventListener("input", render);
+      byId(id).addEventListener("change", render);
+    });
+
+    byId("syncCrmWorklogs").addEventListener("click", syncCrmWorklogs);
+    byId("toggleMapLocationBreakup").addEventListener("click", (event) => {
+      const breakup = byId("mapLocationBreakup");
+      const isExpanded = event.currentTarget.getAttribute("aria-expanded") === "true";
+      event.currentTarget.setAttribute("aria-expanded", String(!isExpanded));
+      event.currentTarget.textContent = isExpanded ? "Expand location data" : "Collapse location data";
+      breakup.hidden = isExpanded;
+    });
+    byId("toggleEngineerStatusBreakup").addEventListener("click", (event) => {
+      const breakup = byId("engineerStatusBreakup");
+      const layout = byId("engineerMapLayout");
+      const isExpanded = event.currentTarget.getAttribute("aria-expanded") === "true";
+      event.currentTarget.setAttribute("aria-expanded", String(!isExpanded));
+      event.currentTarget.textContent = isExpanded ? "Expand engineer data" : "Collapse engineer data";
+      breakup.hidden = isExpanded;
+      layout.classList.toggle("details-collapsed", isExpanded);
+      if (engineerStatusMap) setTimeout(() => engineerStatusMap.invalidateSize(), 0);
+    });
+    byId("openNewRequest").addEventListener("click", openNewRequestModal);
+    byId("closeNewRequest").addEventListener("click", closeNewRequestModal);
+    byId("cancelNewRequest").addEventListener("click", closeNewRequestModal);
+    byId("newRequestForm").addEventListener("submit", addServiceRequest);
+    byId("worklogDate").addEventListener("change", syncCrmWorklogs);
+    byId("worklogEngineerFilter").addEventListener("change", render);
+    byId("clearSummaryFilter").addEventListener("click", () => {
+      activeSummaryFilter = "all";
+      render();
+    });
+    byId("closeSummaryDetail").addEventListener("click", closeSummaryDetail);
+    byId("summaryDetailBody").addEventListener("change", (event) => {
+      if (event.target.matches("[data-request-status]")) {
+        updateRequestStatus(Number(event.target.dataset.requestStatus), event.target.value);
+      }
+
+      if (event.target.matches("[data-completed-upload]")) {
+        handleCompletedDocumentUpload(event.target);
+        if (activeSummaryFilter === "completed") {
+          renderCompletedSummaryDetail();
+        }
+      }
+    });
+    byId("summaryDetailBody").addEventListener("click", (event) => {
+      const viewButton = event.target.closest("[data-completed-view]");
+      const downloadButton = event.target.closest("[data-completed-download]");
+      const breakupButton = event.target.closest("[data-worklog-breakup]");
+
+      if (viewButton) {
+        openCompletedDocument(viewButton.dataset.completedView, viewButton.dataset.docType, false);
+      }
+
+      if (downloadButton) {
+        openCompletedDocument(downloadButton.dataset.completedDownload, downloadButton.dataset.docType, true);
+      }
+
+      if (breakupButton) {
+        openCompletedBreakup(breakupButton.dataset.worklogBreakup);
+      }
+
+      const ongoingBreakupButton = event.target.closest("[data-ongoing-breakup]");
+      if (ongoingBreakupButton) {
+        openOngoingBreakup(Number(ongoingBreakupButton.dataset.ongoingBreakup));
+      }
+    });
+    byId("summaryDetailModal").addEventListener("click", (event) => {
+      if (event.target === byId("summaryDetailModal")) {
+        closeSummaryDetail();
+      }
+    });
+    byId("newRequestModal").addEventListener("click", (event) => {
+      if (event.target === byId("newRequestModal")) {
+        closeNewRequestModal();
+      }
+    });
+    byId("closeEngineerHistory").addEventListener("click", closeEngineerHistory);
+    byId("historyFromDate").addEventListener("change", renderEngineerHistory);
+    byId("historyToDate").addEventListener("change", renderEngineerHistory);
+    byId("downloadEngineerCsv").addEventListener("click", downloadEngineerHistoryCsv);
+    byId("printEngineerHistory").addEventListener("click", () => window.print());
+    ["completedSearch", "completedBuFilter", "completedSiteFilter", "completedRequestDateFilter", "completedEngineerFilter", "completedDateFilter"].forEach((id) => {
+      byId(id).addEventListener("input", renderCompletedWorkRequests);
+      byId(id).addEventListener("change", renderCompletedWorkRequests);
+    });
+    byId("completedWorkBody").addEventListener("change", (event) => {
+      if (event.target.matches("[data-completed-upload]")) {
+        handleCompletedDocumentUpload(event.target);
+      }
+    });
+    byId("completedWorkBody").addEventListener("click", (event) => {
+      const viewButton = event.target.closest("[data-completed-view]");
+      const downloadButton = event.target.closest("[data-completed-download]");
+      const breakupButton = event.target.closest("[data-worklog-breakup]");
+
+      if (viewButton) {
+        openCompletedDocument(viewButton.dataset.completedView, viewButton.dataset.docType, false);
+      }
+
+      if (downloadButton) {
+        openCompletedDocument(downloadButton.dataset.completedDownload, downloadButton.dataset.docType, true);
+      }
+
+      if (breakupButton) {
+        openCompletedBreakup(breakupButton.dataset.worklogBreakup);
+      }
+    });
+    byId("closeWorklogBreakup").addEventListener("click", closeCompletedBreakup);
+    byId("worklogBreakupModal").addEventListener("click", (event) => {
+      if (event.target === byId("worklogBreakupModal")) {
+        closeCompletedBreakup();
+      }
+    });
+    byId("engineerHistoryModal").addEventListener("click", (event) => {
+      if (event.target === byId("engineerHistoryModal")) {
+        closeEngineerHistory();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeSummaryDetail();
+        closeNewRequestModal();
+        closeEngineerHistory();
+        closeCompletedBreakup();
+      }
+    });
+
+    document.querySelectorAll("[data-summary-filter]").forEach((card) => {
+      card.addEventListener("click", () => setSummaryFilter(card.dataset.summaryFilter));
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setSummaryFilter(card.dataset.summaryFilter);
+        }
+      });
+    });
+
+    syncCrmWorklogs();
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Service Tracker Dashboard</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
