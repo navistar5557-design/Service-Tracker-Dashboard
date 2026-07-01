@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17324d">
+  <title>Service Tracker - Offline</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #f2f5f9;
+      color: #172033;
+      font-family: Inter, system-ui, sans-serif;
+    }
+    main {
+      width: min(440px, 100%);
+      padding: 28px;
+      border: 1px solid #d8e0ea;
+      border-top: 5px solid #0d8278;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 16px 38px rgba(25, 42, 67, 0.12);
+    }
+    h1 { margin: 0 0 10px; font-size: 25px; letter-spacing: 0; }
+    p { margin: 0 0 22px; color: #637083; }
+    button {
+      min-height: 44px;
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 6px;
+      background: #0d8278;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>You are offline</h1>
+    <p>Connect to the internet and try again to load the latest service tracker data.</p>
+    <button type="button" onclick="location.reload()">Try Again</button>
+  </main>
+</body>
+</html>
