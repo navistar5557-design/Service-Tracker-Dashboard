@@ -1,10 +1,18 @@
-const CACHE_NAME = "service-tracker-v5";
+const CACHE_NAME = "service-tracker-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./service-tracker-dashboard.html",
   "./offline.html",
   "./manifest.webmanifest",
+  "./tile-icons/clipboard-list.svg",
+  "./tile-icons/hourglass.svg",
+  "./tile-icons/circle-check-big.svg",
+  "./tile-icons/hard-hat.svg",
+  "./tile-icons/activity.svg",
+  "./tile-icons/clock-alert.svg",
+  "./tile-icons/map-pin.svg",
+  "./tile-icons/monitor-cog.svg",
   "./icons/app-icon-192.png",
   "./icons/app-icon-512.png",
   "./icons/app-icon-maskable-512.png"
