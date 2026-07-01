@@ -1,6 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>
+    if (new URLSearchParams(window.location.search).get("app") === "android") {
+      document.documentElement.classList.add("native-app");
+    }
+  </script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17324d">
