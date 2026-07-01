@@ -1541,42 +1541,16 @@
     @media (max-width: 680px) {
       .topbar-inner,
       main {
-        width: min(100% - 16px, 1440px);
+        width: min(100% - 20px, 1440px);
       }
 
       .topbar-inner {
-        min-height: 0;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 0;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px 0;
       }
 
-      .brand-block h1 {
-        font-size: 20px;
-        line-height: 1.12;
-      }
-
-      .brand-block p {
-        display: none;
-      }
-
-      .date-pill {
-        min-height: 32px;
-        padding: 6px 8px;
-        font-size: 11px;
-      }
-
-      main {
-        padding: 10px 0 28px;
-      }
-
-      .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-
+      .summary-grid,
       .toolbar,
       .engineer-list,
       .worklog-list {
@@ -1585,47 +1559,91 @@
 
       .top-actions {
         justify-content: stretch;
-        margin-bottom: 10px;
-        padding: 6px;
       }
 
       .top-actions .primary-button {
         width: 100%;
+      }
+
+      html.native-app .topbar-inner,
+      html.native-app main {
+        width: min(100% - 16px, 1440px);
+      }
+
+      html.native-app .topbar-inner {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 0;
+      }
+
+      html.native-app .brand-block h1 {
+        font-size: 20px;
+        line-height: 1.12;
+      }
+
+      html.native-app .brand-block p {
+        display: none;
+      }
+
+      html.native-app .date-pill {
+        min-height: 32px;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+
+      html.native-app main {
+        padding: 10px 0 28px;
+      }
+
+      html.native-app .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      html.native-app .top-actions {
+        margin-bottom: 10px;
+        padding: 6px;
+      }
+
+      html.native-app .top-actions .primary-button {
         min-height: 38px;
         padding: 7px 12px;
         font-size: 13px;
       }
 
-      .metric-card {
+      html.native-app .metric-card {
         min-height: 104px;
         padding: 10px;
         grid-template-rows: 28px 28px 28px;
         gap: 2px;
       }
 
-      .metric-label {
+      html.native-app .metric-label {
         align-self: center;
         font-size: 10px;
         line-height: 1.25;
       }
 
-      .metric-value {
+      html.native-app .metric-value {
         min-height: 28px;
         font-size: 24px;
       }
 
-      .metric-note {
+      html.native-app .metric-note {
         min-height: 28px;
         overflow: hidden;
         font-size: 10px;
         line-height: 1.3;
       }
 
-      .metric-card:hover,
-      .metric-card:focus-visible,
-      .metric-card.active,
-      .metric-card.active:hover,
-      .metric-card.active:focus-visible {
+      html.native-app .metric-card:hover,
+      html.native-app .metric-card:focus-visible,
+      html.native-app .metric-card.active,
+      html.native-app .metric-card.active:hover,
+      html.native-app .metric-card.active:focus-visible {
         transform: none;
       }
 
