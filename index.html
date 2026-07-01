@@ -1543,6 +1543,186 @@
       }
     }
 
+    .app-menu-button,
+    .app-nav,
+    .app-nav-backdrop {
+      display: none;
+    }
+
+    html.native-app .app-menu-button {
+      width: 38px;
+      height: 38px;
+      padding: 9px;
+      display: grid;
+      align-content: center;
+      gap: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+    }
+
+    html.native-app .app-menu-button span {
+      height: 2px;
+      display: block;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    html.native-app .app-nav {
+      width: min(82vw, 300px);
+      height: 100dvh;
+      padding: 16px 12px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 120;
+      display: block;
+      overflow-y: auto;
+      color: #172033;
+      background: #fff;
+      border-right: 1px solid #d8e0ea;
+      box-shadow: 18px 0 45px rgba(23, 50, 77, 0.24);
+      transform: translateX(-104%);
+      transition: transform 220ms ease;
+    }
+
+    html.native-app .app-nav.open {
+      transform: translateX(0);
+    }
+
+    html.native-app body.app-nav-open {
+      overflow: hidden;
+    }
+
+    html.native-app .app-nav-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      display: block;
+      visibility: hidden;
+      opacity: 0;
+      background: rgba(16, 28, 46, 0.48);
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    html.native-app .app-nav-backdrop.open {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .app-nav-head {
+      min-height: 54px;
+      margin-bottom: 12px;
+      padding: 0 4px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid #e3e8ef;
+    }
+
+    .app-nav-title {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .app-nav-close {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 6px;
+      color: #445268;
+      background: #edf2f7;
+      font-size: 25px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .app-nav-group,
+    .app-nav-item {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 6px;
+      color: #263449;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .app-nav-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #fff;
+      background: #17324d;
+    }
+
+    .app-nav-group::after {
+      content: "+";
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .app-nav-group[aria-expanded="true"]::after {
+      content: "-";
+    }
+
+    .app-report-list {
+      margin: 6px 0 10px;
+      padding-left: 8px;
+      border-left: 2px solid #dce5ef;
+    }
+
+    .app-report-list[hidden] {
+      display: none;
+    }
+
+    .app-report-list .app-nav-item {
+      min-height: 36px;
+      padding: 7px 9px;
+      color: #536176;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .app-nav-item:hover,
+    .app-nav-item:focus-visible {
+      color: #075f59;
+      background: #eaf8f6;
+    }
+
+    .app-info-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .app-info-row {
+      padding: 12px;
+      border: 1px solid #d8e0ea;
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+
+    .app-info-row span {
+      display: block;
+      color: #637083;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .app-info-row strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 14px;
+    }
+
     @media (max-width: 680px) {
       .topbar-inner,
       main {
@@ -1578,7 +1758,7 @@
       html.native-app .topbar-inner {
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: 38px minmax(0, 1fr) auto;
         align-items: center;
         gap: 8px;
         padding: 10px 0;
@@ -1688,8 +1868,31 @@
 </head>
 <body>
   <div class="app-shell">
+    <div class="app-nav-backdrop" id="appNavBackdrop"></div>
+    <aside class="app-nav" id="appNav" aria-label="App navigation" aria-hidden="true">
+      <div class="app-nav-head">
+        <div class="app-nav-title">Service Request Tracker</div>
+        <button class="app-nav-close" id="closeAppNav" type="button" aria-label="Close menu">&times;</button>
+      </div>
+      <button class="app-nav-group" id="reportsMenuToggle" type="button" aria-expanded="true" aria-controls="appReportList">Reports</button>
+      <div class="app-report-list" id="appReportList">
+        <button class="app-nav-item" type="button" data-app-report="daywise">Day-wise Tasks Completed</button>
+        <button class="app-nav-item" type="button" data-app-report="all">Total Requests</button>
+        <button class="app-nav-item" type="button" data-app-report="pending">Pending Requests</button>
+        <button class="app-nav-item" type="button" data-app-report="completed">Completed Requests</button>
+        <button class="app-nav-item" type="button" data-app-report="ongoing">Ongoing Site Work</button>
+        <button class="app-nav-item" type="button" data-app-report="workInProgress">Work in Progress</button>
+        <button class="app-nav-item" type="button" data-app-report="over30">Over 30 Days</button>
+        <button class="app-nav-item" type="button" data-app-report="gps">GPS Units</button>
+        <button class="app-nav-item" type="button" data-app-report="fms">FMS Units</button>
+      </div>
+      <button class="app-nav-item" id="openAppInfo" type="button">App Info</button>
+    </aside>
     <header class="topbar">
       <div class="topbar-inner">
+        <button class="app-menu-button" id="openAppNav" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="appNav">
+          <span></span><span></span><span></span>
+        </button>
         <div class="brand-block">
           <h1>Service Tracker Dashboard</h1>
           <p>Installation and troubleshooting queue for KPIL and VSEPL sites</p>
@@ -3367,6 +3570,128 @@
       byId("summaryDetailModal").classList.remove("open");
     }
 
+    function setAppNavigation(open) {
+      byId("appNav").classList.toggle("open", open);
+      byId("appNavBackdrop").classList.toggle("open", open);
+      byId("appNav").setAttribute("aria-hidden", String(!open));
+      byId("openAppNav").setAttribute("aria-expanded", String(open));
+      document.body.classList.toggle("app-nav-open", open);
+    }
+
+    function daywiseCompletedTaskRows() {
+      const completedLogs = workLogs.filter((log) => {
+        const installation = Number(log.newInstallation) || 0;
+        const service = Number(log.service) || 0;
+        return String(log.status).toLowerCase() === "completed" || installation + service > 0;
+      });
+      const sourceRows = completedLogs.length ? completedLogs.map((log) => {
+        const installation = Number(log.newInstallation) || 0;
+        const service = Number(log.service) || 0;
+        const request = enrichedRequests.find((item) => item.id === log.serviceId);
+        return {
+          date: log.date,
+          tasks: installation + service || 1,
+          installation,
+          service,
+          site: request?.site || "-",
+          engineer: log.engineer || request?.engineerDisplay || "Unassigned"
+        };
+      }) : completedWorkRequests().map((record) => ({
+        date: record.personReturned,
+        tasks: Number(record.tasksCompleted) || 0,
+        installation: Number(record.newInstallation) || 0,
+        service: Number(record.service) || 0,
+        site: record.site,
+        engineer: record.serviceEngineer || "Unassigned"
+      }));
+
+      const byDate = new Map();
+      sourceRows.forEach((row) => {
+        const current = byDate.get(row.date) || {
+          date: row.date,
+          tasks: 0,
+          installation: 0,
+          service: 0,
+          sites: new Set(),
+          engineers: new Set()
+        };
+        current.tasks += row.tasks;
+        current.installation += row.installation;
+        current.service += row.service;
+        current.sites.add(row.site);
+        current.engineers.add(row.engineer);
+        byDate.set(row.date, current);
+      });
+
+      return [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    function openDaywiseCompletedReport() {
+      const rows = daywiseCompletedTaskRows();
+      const total = rows.reduce((sum, row) => sum + row.tasks, 0);
+      byId("summaryDetailTitle").textContent = "Day-wise Tasks Completed";
+      byId("summaryDetailMeta").textContent = `${formatNumber(total)} completed task${total === 1 ? "" : "s"} across ${rows.length} day${rows.length === 1 ? "" : "s"}`;
+      byId("summaryDetailBody").innerHTML = rows.length ? `
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th>Tasks Completed</th><th>New Installation</th><th>Service</th><th>Sites</th><th>Service Engineers</th></tr></thead>
+            <tbody>${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.date)}</td>
+                <td><strong>${formatNumber(row.tasks)}</strong></td>
+                <td>${formatNumber(row.installation)}</td>
+                <td>${formatNumber(row.service)}</td>
+                <td>${escapeHtml([...row.sites].join(", "))}</td>
+                <td>${escapeHtml([...row.engineers].join(", "))}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>` : `<div class="detail-empty">No completed task data is available.</div>`;
+    }
+
+    function openAppRequestReport(reportName) {
+      if (reportName === "daywise") {
+        openDaywiseCompletedReport();
+      } else if (reportName === "completed") {
+        renderCompletedSummaryDetail();
+      } else {
+        const definition = summaryFilters[reportName] || summaryFilters.all;
+        const items = enrichedRequests.filter(definition.match);
+        const unitTotal = reportName === "gps"
+          ? items.reduce((sum, item) => sum + item.gps, 0)
+          : reportName === "fms" ? items.reduce((sum, item) => sum + item.fms, 0) : null;
+        const reportTitle = reportName === "all" ? "Total Requests" : definition.label;
+        byId("summaryDetailTitle").textContent = reportTitle;
+        byId("summaryDetailMeta").textContent = unitTotal === null
+          ? `${items.length} matching record${items.length === 1 ? "" : "s"}`
+          : `${items.length} request${items.length === 1 ? "" : "s"} | ${formatNumber(unitTotal)} ${reportName.toUpperCase()} units`;
+        byId("summaryDetailBody").innerHTML = items.length ? `
+          <div class="table-scroll"><table>
+            <thead><tr><th>Sl.No</th><th>Requested Date</th><th>Planned Date</th><th>Age</th><th>Client</th><th>Site</th><th>Location</th><th>Type</th><th>GPS</th><th>FMS</th><th>Status</th><th>Engineer</th></tr></thead>
+            <tbody>${detailRows(items)}</tbody>
+          </table></div>` : `<div class="detail-empty">No matching service requests found.</div>`;
+      }
+      setAppNavigation(false);
+      byId("summaryDetailModal").classList.add("open");
+    }
+
+    function openAppInformation() {
+      const params = new URLSearchParams(window.location.search);
+      const version = params.get("app-version") || "1.6";
+      byId("summaryDetailTitle").textContent = "App Info";
+      byId("summaryDetailMeta").textContent = "Service Request Tracker";
+      byId("summaryDetailBody").innerHTML = `
+        <div class="app-info-grid">
+          <div class="app-info-row"><span>App Name</span><strong>Service Request Tracker</strong></div>
+          <div class="app-info-row"><span>Version</span><strong>${escapeHtml(version)}</strong></div>
+          <div class="app-info-row"><span>Dashboard Updates</span><strong>Automatic when online</strong></div>
+          <div class="app-info-row"><span>Offline Support</span><strong>Bundled dashboard available</strong></div>
+          <div class="app-info-row"><span>Reports</span><strong>Day-wise tasks and all dashboard KPIs</strong></div>
+        </div>`;
+      setAppNavigation(false);
+      byId("summaryDetailModal").classList.add("open");
+    }
+
     function updateRequestStatus(requestId, status) {
       statusOverrides[requestId] = status;
       savedServiceRequests = savedServiceRequests.map((request) => (
@@ -4132,8 +4457,21 @@
         closeEngineerHistory();
       }
     });
+    byId("openAppNav").addEventListener("click", () => setAppNavigation(true));
+    byId("closeAppNav").addEventListener("click", () => setAppNavigation(false));
+    byId("appNavBackdrop").addEventListener("click", () => setAppNavigation(false));
+    byId("reportsMenuToggle").addEventListener("click", () => {
+      const expanded = byId("reportsMenuToggle").getAttribute("aria-expanded") === "true";
+      byId("reportsMenuToggle").setAttribute("aria-expanded", String(!expanded));
+      byId("appReportList").hidden = expanded;
+    });
+    document.querySelectorAll("[data-app-report]").forEach((button) => {
+      button.addEventListener("click", () => openAppRequestReport(button.dataset.appReport));
+    });
+    byId("openAppInfo").addEventListener("click", openAppInformation);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        setAppNavigation(false);
         closeSummaryDetail();
         closeNewRequestModal();
         closeEngineerHistory();
