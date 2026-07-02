@@ -2327,6 +2327,18 @@
         font-size: 12px;
       }
     }
+
+    html:not(.native-app) {
+      --bg: #fbfcfa;
+      --surface-soft: #f5f7f4;
+      --line: #dfe4df;
+    }
+
+    html:not(.native-app) body,
+    html:not(.native-app) .app-shell {
+      background: #fbfcfa;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    }
   </style>
 </head>
 <body>
