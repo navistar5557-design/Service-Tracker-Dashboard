@@ -1,10 +1,9 @@
-const CACHE_NAME = "service-tracker-v11";
+const CACHE_NAME = "service-tracker-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./service-tracker-dashboard.html",
   "./offline.html",
-  "./india-boundary.geojson",
   "./manifest.webmanifest",
   "./tile-icons/clipboard-list.svg",
   "./tile-icons/hourglass.svg",

@@ -4632,76 +4632,6 @@
       }, {}));
     }
 
-    const indiaMapBounds = [[6.4, 67.7], [35.8, 97.6]];
-    let indiaBoundaryPromise;
-
-    function loadIndiaBoundary() {
-      if (!indiaBoundaryPromise) {
-        indiaBoundaryPromise = fetch("./india-boundary.geojson").then((response) => {
-          if (!response.ok) throw new Error("India boundary could not be loaded");
-          return response.json();
-        });
-      }
-      return indiaBoundaryPromise;
-    }
-
-    function restrictMapToIndia(map) {
-      map.setMaxBounds(indiaMapBounds);
-      map.options.maxBoundsViscosity = 1;
-      map.options.minZoom = 4;
-
-      const pane = map.createPane("indiaMaskPane");
-      pane.style.zIndex = "350";
-      pane.style.pointerEvents = "none";
-
-      loadIndiaBoundary().then((boundary) => {
-        const canvas = L.DomUtil.create("canvas", "india-map-mask", pane);
-        const drawMask = () => {
-          const size = map.getSize();
-          const ratio = window.devicePixelRatio || 1;
-          canvas.width = Math.round(size.x * ratio);
-          canvas.height = Math.round(size.y * ratio);
-          canvas.style.width = `${size.x}px`;
-          canvas.style.height = `${size.y}px`;
-          L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
-
-          const context = canvas.getContext("2d");
-          context.setTransform(ratio, 0, 0, ratio, 0, 0);
-          context.fillStyle = "#fbfcfa";
-          context.fillRect(0, 0, size.x, size.y);
-          context.globalCompositeOperation = "destination-out";
-
-          boundary.geometry.coordinates.forEach((polygon) => {
-            context.beginPath();
-            polygon[0].forEach(([lng, lat], index) => {
-              const point = map.latLngToContainerPoint([lat, lng]);
-              if (index === 0) context.moveTo(point.x, point.y);
-              else context.lineTo(point.x, point.y);
-            });
-            context.closePath();
-            context.fill();
-          });
-
-          context.globalCompositeOperation = "source-over";
-          context.strokeStyle = "#0d8278";
-          context.lineWidth = 1.5;
-          boundary.geometry.coordinates.forEach((polygon) => {
-            context.beginPath();
-            polygon[0].forEach(([lng, lat], index) => {
-              const point = map.latLngToContainerPoint([lat, lng]);
-              if (index === 0) context.moveTo(point.x, point.y);
-              else context.lineTo(point.x, point.y);
-            });
-            context.closePath();
-            context.stroke();
-          });
-        };
-
-        map.on("moveend zoomend resize", drawMask);
-        drawMask();
-      }).catch(() => {});
-    }
-
     function initServiceMap() {
       const stage = byId("mapStage");
       if (!window.L) {
@@ -4720,8 +4650,6 @@
         maxZoom: 18,
         attribution: "&copy; OpenStreetMap contributors"
       }).addTo(serviceMap);
-
-      restrictMapToIndia(serviceMap);
 
       serviceMapLayer = L.layerGroup().addTo(serviceMap);
       mapReady = true;
@@ -4747,8 +4675,6 @@
         maxZoom: 18,
         attribution: "&copy; OpenStreetMap contributors"
       }).addTo(engineerStatusMap);
-
-      restrictMapToIndia(engineerStatusMap);
 
       engineerStatusLayer = L.layerGroup().addTo(engineerStatusMap);
       engineerMapReady = true;
@@ -4805,7 +4731,11 @@
             .addTo(serviceMapLayer);
         });
 
-        serviceMap.fitBounds(indiaMapBounds, { padding: [18, 18] });
+        if (bounds.length) {
+          serviceMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 6 });
+        } else {
+          serviceMap.setView([22.8, 80.6], 5);
+        }
       }
 
       byId("mapLocationList").innerHTML = locations.length ? locations.map((group) => `
@@ -5110,7 +5040,11 @@
             .addTo(engineerStatusLayer);
         });
 
-        engineerStatusMap.fitBounds(indiaMapBounds, { padding: [18, 18] });
+        if (bounds.length) {
+          engineerStatusMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 6 });
+        } else {
+          engineerStatusMap.setView([22.8, 80.6], 5);
+        }
       }
 
       byId("engineerStatusList").innerHTML = rows.length ? rows.map((row) => `
