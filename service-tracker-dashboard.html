@@ -157,7 +157,7 @@
       z-index: 1;
       display: block;
       pointer-events: none;
-      opacity: 0.18;
+      opacity: 0.28;
       transform-origin: center;
       transition: opacity 180ms ease, transform 180ms ease;
     }
@@ -182,7 +182,7 @@
 
     .metric-card:hover .metric-motion,
     .metric-card:focus-visible .metric-motion {
-      opacity: 0.3;
+      opacity: 0.42;
       transform: scale(1.08);
     }
 
@@ -1376,8 +1376,8 @@
     }
 
     @keyframes tile-scan {
-      0%, 100% { transform: translateX(-4px); opacity: 0.14; }
-      50% { transform: translateX(4px); opacity: 0.25; }
+      0%, 100% { transform: translateX(-4px); opacity: 0.24; }
+      50% { transform: translateX(4px); opacity: 0.38; }
     }
 
     @keyframes tile-tick {
@@ -1407,12 +1407,12 @@
       height: 48px;
       right: 5px;
       bottom: 6px;
-      opacity: 0.16;
+      opacity: 0.26;
     }
 
     html.native-app .metric-card:active .metric-motion,
     html.native-app .metric-card.active .metric-motion {
-      opacity: 0.26;
+      opacity: 0.4;
     }
 
     @media (prefers-reduced-motion: reduce) {
