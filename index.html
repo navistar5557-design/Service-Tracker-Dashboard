@@ -102,6 +102,141 @@
       white-space: nowrap;
     }
 
+    .dashboard-date-selector {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .date-pill {
+      appearance: none;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .date-pill:hover,
+    .date-pill:focus-visible,
+    .date-pill[aria-expanded="true"] {
+      border-color: rgba(255, 255, 255, 0.56);
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+    }
+
+    .calendar-icon {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 19px;
+    }
+
+    .date-picker-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 1200;
+      width: min(292px, calc(100vw - 24px));
+      padding: 14px;
+      border: 1px solid #d5dee8;
+      border-radius: 8px;
+      background: #fff;
+      color: #142238;
+      box-shadow: 0 22px 52px rgba(20, 34, 56, 0.24);
+    }
+
+    .date-picker-popover[hidden] {
+      display: none;
+    }
+
+    .date-picker-popover label {
+      display: block;
+      margin-bottom: 7px;
+      color: #536277;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .date-picker-popover input {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid #c9d4df;
+      border-radius: 6px;
+      color: #142238;
+      background: #fff;
+      font: inherit;
+    }
+
+    .date-picker-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .date-picker-actions button {
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid #b9c7d5;
+      border-radius: 6px;
+      background: #fff;
+      color: #17324d;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 750;
+    }
+
+    .date-picker-actions .apply-date-button {
+      border-color: #0d8278;
+      background: #0d8278;
+      color: #fff;
+    }
+
+    .dashboard-date-state {
+      display: none;
+      min-height: 220px;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 18px;
+      text-align: center;
+    }
+
+    body.dashboard-date-loading main > :not(.dashboard-date-state),
+    body.dashboard-date-unavailable main > :not(.dashboard-date-state) {
+      display: none !important;
+    }
+
+    body.dashboard-date-loading .dashboard-date-state,
+    body.dashboard-date-unavailable .dashboard-date-state {
+      display: flex;
+    }
+
+    .dashboard-date-message {
+      max-width: 480px;
+      color: #536277;
+      font-size: 15px;
+      font-weight: 650;
+    }
+
+    .dashboard-date-message strong {
+      display: block;
+      margin-bottom: 7px;
+      color: #142238;
+      font-size: 19px;
+    }
+
+    .dashboard-loading-spinner {
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 14px;
+      border: 3px solid #d8e3e9;
+      border-top-color: #0d8278;
+      border-radius: 50%;
+      animation: dashboard-date-spin 750ms linear infinite;
+    }
+
+    @keyframes dashboard-date-spin {
+      to { transform: rotate(360deg); }
+    }
+
     main {
       width: min(1440px, calc(100% - 32px));
       margin: 0 auto;
@@ -2382,11 +2517,29 @@
           <h1>Service Tracker Dashboard</h1>
           <p>Installation and troubleshooting queue for KPIL and VSEPL sites</p>
         </div>
-        <div class="date-pill" id="asOfDate">As of 22 Jun 2026</div>
+        <div class="dashboard-date-selector" id="dashboardDateSelector">
+          <button class="date-pill" id="dashboardDateButton" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="dashboardDatePopover">
+            <span id="asOfDate">As of Today</span>
+            <svg class="calendar-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path>
+            </svg>
+          </button>
+          <div class="date-picker-popover" id="dashboardDatePopover" role="dialog" aria-label="Select dashboard date" hidden>
+            <label for="dashboardDateInput">Dashboard date</label>
+            <input id="dashboardDateInput" type="date">
+            <div class="date-picker-actions">
+              <button id="dashboardTodayButton" type="button">Today</button>
+              <button class="apply-date-button" id="dashboardApplyDate" type="button">Apply</button>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
     <main>
+      <section class="dashboard-date-state" id="dashboardDateState" aria-live="polite">
+        <div class="dashboard-date-message" id="dashboardDateMessage"></div>
+      </section>
       <section class="top-actions" aria-label="Primary actions">
         <button class="primary-button" id="openNewRequest" type="button">Add New Service Request</button>
       </section>
@@ -2941,7 +3094,9 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const asOfDate = new Date(2026, 5, 22);
+    const seededSnapshotDate = "2026-06-22";
+    let selectedDashboardDate = todayValue();
+    let dashboardAsOfDate = dateInputToDate(selectedDashboardDate);
     const requests = [
       { id: 1, date: "05.01.2026", client: "KPIL", site: "MEN2", location: "Nagpur", type: "Installation", gps: 20, fms: 40, pending: "5Months", status: "Ongoing", engineer: "Manish, Sudhir" },
       { id: 2, date: "07.06.2026", client: "KPIL", site: "MUD3", location: "Delhi", type: "Installation", gps: 0, fms: 20, pending: "10 days", status: "Ongoing", engineer: "Shivam" },
@@ -2989,7 +3144,7 @@
     };
 
     const ageInDays = (dateText) => {
-      const diff = asOfDate - parseServiceDate(dateText);
+      const diff = dashboardAsOfDate - parseServiceDate(dateText);
       return Math.max(0, Math.round(diff / 86400000));
     };
 
@@ -3018,6 +3173,7 @@
       || document.querySelector('meta[name="crm-worklog-endpoint"]')?.content
       || "";
     let workLogs = loadWorkLogs();
+    let liveWorkLogs = workLogs.slice();
     let activeSummaryFilter = "all";
     let savedServiceRequests = loadServiceRequests();
     let statusOverrides = loadStatusOverrides();
@@ -3025,6 +3181,7 @@
     let enrichedRequests = buildRequests();
     let activeEngineerHistory = "";
     let worklogEntryMode = "quick";
+    let historicalDataAvailable = true;
 
     const requestStatusOptions = ["Pending", "Ongoing", "Awaiting Closure", "Work in Progress", "Completed"];
 
@@ -3088,6 +3245,134 @@
       return `${day}.${month}.${year}`;
     }
 
+    function dashboardDateLabel(dateText) {
+      if (dateText === todayValue()) return "As of Today";
+      return `As of ${dateInputToDate(dateText).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      })}`;
+    }
+
+    function isViewingToday() {
+      return selectedDashboardDate === todayValue() && historicalDataAvailable;
+    }
+
+    function loadDashboardSnapshots() {
+      try {
+        return JSON.parse(localStorage.getItem("serviceTrackerDashboardSnapshots") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveDashboardSnapshots(snapshots) {
+      localStorage.setItem("serviceTrackerDashboardSnapshots", JSON.stringify(snapshots));
+    }
+
+    function snapshotRequest(item) {
+      const { age, engineerDisplay, ...request } = item;
+      return request;
+    }
+
+    function seededDashboardSnapshot() {
+      return {
+        date: seededSnapshotDate,
+        requests: requests
+          .filter((request) => displayToDateInput(request.date) <= seededSnapshotDate)
+          .map((request) => ({ ...request })),
+        workLogs: liveWorkLogs.filter((log) => log.date <= seededSnapshotDate)
+      };
+    }
+
+    function captureTodaySnapshot() {
+      if (!isViewingToday()) return;
+      const snapshots = loadDashboardSnapshots();
+      snapshots[todayValue()] = {
+        date: todayValue(),
+        requests: enrichedRequests.map(snapshotRequest),
+        workLogs: liveWorkLogs.slice(),
+        capturedAt: new Date().toISOString()
+      };
+      saveDashboardSnapshots(snapshots);
+    }
+
+    function dashboardSnapshotFor(dateText) {
+      if (dateText === seededSnapshotDate) return seededDashboardSnapshot();
+      return loadDashboardSnapshots()[dateText] || null;
+    }
+
+    function setDatePopover(open) {
+      byId("dashboardDatePopover").hidden = !open;
+      byId("dashboardDateButton").setAttribute("aria-expanded", String(open));
+      if (open) {
+        byId("dashboardDateInput").value = selectedDashboardDate;
+        byId("dashboardDateInput").focus();
+      }
+    }
+
+    function updateDashboardDateUrl(dateText) {
+      const url = new URL(window.location.href);
+      if (dateText === todayValue()) url.searchParams.delete("date");
+      else url.searchParams.set("date", dateText);
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    async function selectDashboardDate(dateText, updateUrl = true) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText || "")) return;
+
+      selectedDashboardDate = dateText;
+      dashboardAsOfDate = dateInputToDate(dateText);
+      byId("asOfDate").textContent = dashboardDateLabel(dateText);
+      byId("dashboardDateInput").value = dateText;
+      setDatePopover(false);
+      document.body.classList.remove("dashboard-date-unavailable");
+      document.body.classList.add("dashboard-date-loading");
+      byId("dashboardDateMessage").innerHTML = `<div class="dashboard-loading-spinner"></div><strong>Loading dashboard</strong>Retrieving the snapshot for ${escapeHtml(dashboardDateLabel(dateText).replace("As of ", ""))}...`;
+      await new Promise((resolve) => setTimeout(resolve, 220));
+
+      if (dateText === todayValue()) {
+        historicalDataAvailable = true;
+        liveWorkLogs = loadWorkLogs();
+        workLogs = liveWorkLogs.slice();
+        enrichedRequests = buildRequests();
+      } else {
+        const snapshot = dashboardSnapshotFor(dateText);
+        if (!snapshot) {
+          historicalDataAvailable = false;
+          document.body.classList.remove("dashboard-date-loading");
+          document.body.classList.add("dashboard-date-unavailable");
+          byId("dashboardDateMessage").innerHTML = `<strong>No historical data available</strong>No historical data available for the selected date.`;
+          if (updateUrl) updateDashboardDateUrl(dateText);
+          return;
+        }
+
+        historicalDataAvailable = true;
+        workLogs = (snapshot.workLogs || []).filter((log) => log.date <= dateText);
+        enrichedRequests = (snapshot.requests || [])
+          .filter((request) => displayToDateInput(request.date) <= dateText)
+          .map((request) => ({
+            ...request,
+            age: ageInDays(request.date),
+            engineerDisplay: request.engineer || "Unassigned"
+          }));
+      }
+
+      activeSummaryFilter = "all";
+      refreshDynamicControls();
+      render();
+      document.body.classList.remove("dashboard-date-loading", "dashboard-date-unavailable");
+      if (updateUrl) updateDashboardDateUrl(dateText);
+      if (serviceMap) setTimeout(() => serviceMap.invalidateSize(), 0);
+      if (engineerStatusMap) setTimeout(() => engineerStatusMap.invalidateSize(), 0);
+    }
+
+    function initializeDashboardDate() {
+      captureTodaySnapshot();
+      const requestedDate = new URLSearchParams(window.location.search).get("date");
+      selectDashboardDate(requestedDate || todayValue(), false);
+    }
+
     function loadWorkLogs() {
       try {
         return JSON.parse(localStorage.getItem("serviceTrackerCrmWorkLogs") || "[]");
@@ -3098,6 +3383,7 @@
 
     function saveWorkLogs() {
       localStorage.setItem("serviceTrackerCrmWorkLogs", JSON.stringify(workLogs));
+      if (isViewingToday()) liveWorkLogs = workLogs.slice();
     }
 
     function normalizeCrmWorklog(task) {
@@ -3310,8 +3596,9 @@
           };
         });
 
-      const sampleIds = new Set(sampleCompletedWorkRequests.map((item) => item.id));
-      return [...sampleCompletedWorkRequests, ...completedFromTracker.filter((item) => !sampleIds.has(item.id))];
+      const availableSamples = sampleCompletedWorkRequests.filter((item) => item.personReturned <= selectedDashboardDate);
+      const sampleIds = new Set(availableSamples.map((item) => item.id));
+      return [...availableSamples, ...completedFromTracker.filter((item) => !sampleIds.has(item.id))];
     }
 
     function completedFilterValues(records, key) {
@@ -3861,7 +4148,7 @@
       const logs = workLogs.filter((log) => log.serviceId === service.id);
       const rows = [];
       const start = displayToDateInput(service.date);
-      const end = todayValue();
+      const end = selectedDashboardDate;
 
       for (let cursor = dateInputToDate(start); dateToInput(cursor) <= end; cursor = addDays(cursor, 1)) {
         const date = dateToInput(cursor);
@@ -4007,7 +4294,7 @@
           <td>${item.gps}</td>
           <td>${item.fms}</td>
           <td>
-            <select class="detail-status-select" data-request-status="${item.id}" aria-label="Update status for ${escapeHtml(item.site)}">
+            <select class="detail-status-select" data-request-status="${item.id}" aria-label="Update status for ${escapeHtml(item.site)}" ${isViewingToday() ? "" : "disabled"}>
               ${requestStatusOptions.map((status) => `<option value="${escapeHtml(status)}" ${item.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
             </select>
           </td>
@@ -4186,6 +4473,7 @@
     }
 
     function updateRequestStatus(requestId, status) {
+      if (!isViewingToday()) return;
       statusOverrides[requestId] = status;
       savedServiceRequests = savedServiceRequests.map((request) => (
         request.id === requestId ? { ...request, status } : request
@@ -4202,6 +4490,7 @@
     }
 
     function openNewRequestModal() {
+      if (!isViewingToday()) return;
       byId("newRequestForm").reset();
       byId("newRequestDate").value = todayValue();
       byId("newPlannedDate").value = todayValue();
@@ -4476,7 +4765,7 @@
     }
 
     function engineerStatusRows() {
-      const selectedDate = byId("worklogDate").value || todayValue();
+      const selectedDate = selectedDashboardDate;
       const selectedEngineer = byId("worklogEngineerFilter").value;
       const engineers = assignedEngineerNames().filter((name) => selectedEngineer === "All" || name === selectedEngineer);
 
@@ -4825,6 +5114,7 @@
       renderTable(items);
       renderRecentWorklogs();
       renderCompletedWorkRequests();
+      captureTodaySnapshot();
     }
 
     refreshDynamicControls();
@@ -4859,6 +5149,18 @@
     byId("newRequestForm").addEventListener("submit", addServiceRequest);
     byId("worklogDate").addEventListener("change", syncCrmWorklogs);
     byId("worklogEngineerFilter").addEventListener("change", render);
+    byId("dashboardDateButton").addEventListener("click", () => {
+      setDatePopover(byId("dashboardDatePopover").hidden);
+    });
+    byId("dashboardApplyDate").addEventListener("click", () => {
+      selectDashboardDate(byId("dashboardDateInput").value);
+    });
+    byId("dashboardTodayButton").addEventListener("click", () => {
+      selectDashboardDate(todayValue());
+    });
+    byId("dashboardDateInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") selectDashboardDate(event.currentTarget.value);
+    });
     byId("clearSummaryFilter").addEventListener("click", () => {
       activeSummaryFilter = "all";
       render();
@@ -4964,12 +5266,16 @@
     byId("openAppInfo").addEventListener("click", openAppInformation);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        setDatePopover(false);
         setAppNavigation(false);
         closeSummaryDetail();
         closeNewRequestModal();
         closeEngineerHistory();
         closeCompletedBreakup();
       }
+    });
+    document.addEventListener("click", (event) => {
+      if (!byId("dashboardDateSelector").contains(event.target)) setDatePopover(false);
     });
 
     document.querySelectorAll("[data-summary-filter]").forEach((card) => {
@@ -4982,7 +5288,7 @@
       });
     });
 
-    syncCrmWorklogs();
+    initializeDashboardDate();
 
     if ("serviceWorker" in navigator && /^https?:$/.test(window.location.protocol)) {
       window.addEventListener("load", () => {
