@@ -82,7 +82,6 @@
       background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 400px);
     }
 
-    /* Topbar Navigation */
     .topbar {
       position: sticky;
       top: 0;
@@ -233,7 +232,6 @@
       background: #0d635c;
     }
 
-    /* Main Container */
     main {
       width: min(1440px, calc(100% - 48px));
       margin: 0 auto;
@@ -343,7 +341,6 @@
       color: var(--ink);
     }
 
-    /* Summary Grid Cards */
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -465,7 +462,6 @@
     .metric-card.success .metric-value { color: #059669; }
     .metric-card.danger .metric-value { color: var(--red); }
 
-    /* Filter Toolbar */
     .toolbar {
       display: grid;
       grid-template-columns: minmax(220px, 1.5fr) repeat(4, minmax(140px, 1fr));
@@ -510,7 +506,6 @@
       box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
     }
 
-    /* Content & Panels */
     .content-grid {
       display: grid;
       grid-template-columns: 1.15fr 0.85fr;
@@ -559,7 +554,6 @@
       font-weight: 400;
     }
 
-    /* Status Bar Graphs */
     .status-bars {
       display: grid;
       gap: 12px;
@@ -593,7 +587,6 @@
     .bar-fill.pending { background: var(--amber); }
     .bar-fill.overdue { background: var(--red); }
 
-    /* Engineer Grid */
     .engineer-list {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -638,7 +631,6 @@
       color: var(--ink-secondary);
     }
 
-    /* Map Modules */
     .map-panel {
       margin-bottom: 20px;
     }
@@ -857,7 +849,6 @@
       color: var(--ink);
     }
 
-    /* Table & Card Wrapper */
     .table-wrap {
       overflow: hidden;
       margin-bottom: 24px;
@@ -972,7 +963,6 @@
       background: #f1f5f9;
     }
 
-    /* Badges & Chips */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -1050,7 +1040,6 @@
       display: block;
     }
 
-    /* Modals */
     .detail-modal {
       position: fixed;
       inset: 0;
@@ -1286,7 +1275,6 @@
       min-width: 980px;
     }
 
-    /* Native App & Mobile Responsive Overhauls */
     .app-menu-button,
     .app-nav,
     .app-nav-backdrop {
@@ -3290,9 +3278,9 @@
         scrollWheelZoom: true
       }).setView([22.8, 80.6], 5);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: "&copy; OpenStreetMap contributors"
+      L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        maxZoom: 20,
+        attribution: "&copy; Google Maps"
       }).addTo(serviceMap);
 
       serviceMapLayer = L.layerGroup().addTo(serviceMap);
@@ -3315,9 +3303,9 @@
         scrollWheelZoom: true
       }).setView([22.8, 80.6], 5);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: "&copy; OpenStreetMap contributors"
+      L.tileLayer("https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        maxZoom: 20,
+        attribution: "&copy; Google Maps"
       }).addTo(engineerStatusMap);
 
       engineerStatusLayer = L.layerGroup().addTo(engineerStatusMap);
